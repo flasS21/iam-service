@@ -1,0 +1,47 @@
+services:
+  iam-api:
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    extra_hosts:
+      - "localhost:host-gateway"
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    ports:
+      - "8090:8090"
+    env_file:
+      - .env
+    depends_on:
+      iam-postgres:
+        condition: service_healthy
+      iam-redis:
+        condition: service_started
+
+  iam-redis:
+    image: redis:7
+    ports:
+      - "6389:6379"
+    volumes:
+      - iam_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+  iam-postgres:
+    image: postgres:15
+    ports:
+      - "5442:5432"
+    environment:
+      POSTGRES_USER: flasS21
+      POSTGRES_PASSWORD: flasS@21
+      POSTGRES_DB: keystone_auth
+    volumes:
+      - iam_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flasS21 -d keystone_auth"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  iam_redis_data:
+  iam_postgres_data:
