@@ -33,11 +33,11 @@ services:
     environment:
       POSTGRES_USER: flasS21
       POSTGRES_PASSWORD: flasS@21
-      POSTGRES_DB: keystone_auth
+      POSTGRES_DB: iam_db
     volumes:
       - iam_postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U flasS21 -d keystone_auth"]
+      test: ["CMD-SHELL", "pg_isready -U flasS21 -d iam_db"]
       interval: 5s
       timeout: 5s
       retries: 5

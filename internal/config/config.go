@@ -7,15 +7,8 @@ import (
 type Config struct {
 	AppPort string
 
-	// ----------------------------
-	// Google OAuth
-	// ----------------------------
-	GoogleClientID     string
-	GoogleClientSecret string
-	GoogleRedirectURL  string
-
 	// ============================
-	// NEW: Keycloak OAuth
+	// Keycloak OAuth
 	// ============================
 	KeycloakIssuer        string
 	KeycloakClientID      string
@@ -40,15 +33,8 @@ func Load() Config {
 
 		AppPort: os.Getenv("APP_PORT"),
 
-		// ----------------------------
-		// Google OAuth
-		// ----------------------------
-		GoogleClientID:     os.Getenv("GOOGLE_CLIENT_ID"),
-		GoogleClientSecret: os.Getenv("GOOGLE_CLIENT_SECRET"),
-		GoogleRedirectURL:  os.Getenv("GOOGLE_REDIRECT_URL"),
-
 		// ============================
-		// NEW: Keycloak OAuth
+		// Keycloak OAuth
 		// ============================
 		KeycloakIssuer:        os.Getenv("KEYCLOAK_ISSUER"),
 		KeycloakClientID:      os.Getenv("KEYCLOAK_CLIENT_ID"),

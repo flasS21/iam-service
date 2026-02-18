@@ -32,8 +32,8 @@ func NewHandler(
 }
 
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
-	r.GET("/oauth/login/:provider", h.login)
-	r.GET("/oauth/callback/:provider", h.callback)
+	r.GET("/oauth/login", h.login)
+	r.GET("/oauth/callback", h.callback)
 	r.POST("/auth/logout", h.Logout)
 	r.POST("/auth/logout-all", h.LogoutAll)
 
@@ -43,16 +43,8 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 }
 
 func (h *Handler) login(c *gin.Context) {
-	providerName := c.Param("provider")
 
-	p, err := h.providers.Get(providerName)
-	if err != nil {
-		// c.JSON(http.StatusBadRequest, gin.H{
-		// 	"error": "unknown oauth provider",
-		// })
-		c.AbortWithStatus(http.StatusNotFound)
-		return
-	}
+	p := h.providers.Get()
 
 	state := generateState(c)
 	_, codeChallenge := generatePKCE(c)
@@ -62,16 +54,8 @@ func (h *Handler) login(c *gin.Context) {
 }
 
 func (h *Handler) callback(c *gin.Context) {
-	providerName := c.Param("provider")
 
-	p, err := h.providers.Get(providerName)
-	if err != nil {
-		// c.JSON(http.StatusBadRequest, gin.H{
-		// 	"error": "unknown oauth provider",
-		// })
-		c.AbortWithStatus(http.StatusNotFound)
-		return
-	}
+	p := h.providers.Get()
 
 	if !validateState(c) {
 		// c.JSON(http.StatusUnauthorized, gin.H{
@@ -88,9 +72,8 @@ func (h *Handler) callback(c *gin.Context) {
 	// CASE 1: OAuth error (very common during registration)
 	if errParam != "" {
 		logger.Warn("oidc callback returned error", map[string]any{
-			"provider": providerName,
-			"error":    errParam,
-			"desc":     errDesc,
+			"error": errParam,
+			"desc":  errDesc,
 		})
 		// 	c.Redirect(http.StatusFound, "/login")
 		// 	return
@@ -318,11 +301,8 @@ func clearAuthArtifacts(c *gin.Context) {
 }
 
 func (h *Handler) redirectToKeycloakLogin(c *gin.Context) {
-	keycloakProvider, err := h.providers.Get("keycloak")
-	if err != nil {
-		c.AbortWithStatus(http.StatusInternalServerError)
-		return
-	}
+
+	keycloakProvider := h.providers.Get()
 
 	state := generateState(c)
 	_, codeChallenge := generatePKCE(c)

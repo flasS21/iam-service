@@ -5,7 +5,6 @@ import (
 
 	"iam-service/internal/auth/handler"
 	"iam-service/internal/auth/provider"
-	"iam-service/internal/auth/provider/google"
 	"iam-service/internal/auth/provider/keycloak"
 
 	"iam-service/internal/auth/resolver"
@@ -30,16 +29,6 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 	sessionStore := session.NewRedisStore(infra.Redis.Client)
 	identityResolver := resolver.NewDBResolver(infra.DB)
 
-	googleProvider, err := google.New(
-		ctx,
-		cfg.GoogleClientID,
-		cfg.GoogleClientSecret,
-		cfg.GoogleRedirectURL,
-	)
-	if err != nil {
-		return nil, nil, err
-	}
-
 	keycloakProvider, err := keycloak.New(
 		ctx,
 		cfg.KeycloakIssuer,
@@ -52,7 +41,6 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 	}
 
 	registry := provider.NewRegistry(
-		googleProvider,
 		keycloakProvider,
 	)
 

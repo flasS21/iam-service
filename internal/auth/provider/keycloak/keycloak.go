@@ -19,9 +19,6 @@ type Provider struct {
 	verifier    *oidc.IDTokenVerifier
 }
 
-// New initializes a Keycloak OIDC provider using discovery.
-// issuer must be the realm issuer URL, e.g.
-// http://localhost:8081/realms/auth-service
 func New(
 	ctx context.Context,
 	issuer string,
@@ -44,13 +41,12 @@ func New(
 	})
 
 	ep := oidcProvider.Endpoint()
-	ep.AuthURL = publicBaseURL + "/realms/auth-service/protocol/openid-connect/auth"
+	ep.AuthURL = publicBaseURL + "/protocol/openid-connect/auth"
 
 	oauthCfg := &oauth2.Config{
 		ClientID:    clientID,
 		RedirectURL: redirectURL,
-		// Endpoint:    oidcProvider.Endpoint(),
-		Endpoint: ep,
+		Endpoint:    ep,
 		Scopes: []string{
 			oidc.ScopeOpenID,
 			"email",
@@ -150,9 +146,8 @@ func (p *Provider) ExchangeCode(
 	})
 
 	return &auth.Identity{
-		Provider:       providerName,
-		ProviderUserID: claims.Subject,
-		Email:          claims.Email,
-		EmailVerified:  claims.EmailVerified,
+		KeycloakSub:   claims.Subject,
+		Email:         claims.Email,
+		EmailVerified: claims.EmailVerified,
 	}, nil
 }
