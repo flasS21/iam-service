@@ -23,11 +23,12 @@ func New(
 	ctx context.Context,
 	issuer string,
 	clientID string,
+	clientSecret string,
 	redirectURL string,
 	publicBaseURL string,
 ) (*Provider, error) {
 
-	if issuer == "" || clientID == "" || redirectURL == "" || publicBaseURL == "" {
+	if issuer == "" || clientID == "" || clientSecret == "" || redirectURL == "" || publicBaseURL == "" {
 		return nil, errors.New("keycloak oauth config missing required fields")
 	}
 
@@ -40,13 +41,15 @@ func New(
 		ClientID: clientID,
 	})
 
-	ep := oidcProvider.Endpoint()
-	ep.AuthURL = publicBaseURL + "/protocol/openid-connect/auth"
+	// Endpoint: oidcProvider.Endpoint(),
+	// ep := oidcProvider.Endpoint()
+	// ep.AuthURL = publicBaseURL + "/protocol/openid-connect/auth"
 
 	oauthCfg := &oauth2.Config{
-		ClientID:    clientID,
-		RedirectURL: redirectURL,
-		Endpoint:    ep,
+		ClientID:     clientID,
+		ClientSecret: clientSecret,
+		RedirectURL:  redirectURL,
+		Endpoint:     oidcProvider.Endpoint(),
 		Scopes: []string{
 			oidc.ScopeOpenID,
 			"email",
@@ -60,12 +63,10 @@ func New(
 	}, nil
 }
 
-// Name returns the provider identifier used by the registry.
 func (p *Provider) Name() string {
 	return providerName
 }
 
-// AuthCodeURL builds the OAuth authorization URL with PKCE parameters.
 func (p *Provider) AuthCodeURL(state string, codeChallenge string) string {
 	return p.oauthConfig.AuthCodeURL(
 		state,
@@ -75,8 +76,6 @@ func (p *Provider) AuthCodeURL(state string, codeChallenge string) string {
 	)
 }
 
-// ExchangeCode exchanges the authorization code and returns a normalized identity.
-// This method MUST NOT create users, sessions, or perform linking logic.
 func (p *Provider) ExchangeCode(
 	ctx context.Context,
 	code string,

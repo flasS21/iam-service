@@ -12,6 +12,7 @@ type Config struct {
 	// ============================
 	KeycloakIssuer        string
 	KeycloakClientID      string
+	KeycloakClientSecret  string
 	KeycloakRedirectURL   string
 	KeycloakPublicBaseURL string
 
@@ -38,6 +39,7 @@ func Load() Config {
 		// ============================
 		KeycloakIssuer:        os.Getenv("KEYCLOAK_ISSUER"),
 		KeycloakClientID:      os.Getenv("KEYCLOAK_CLIENT_ID"),
+		KeycloakClientSecret:  os.Getenv("KEYCLOAK_CLIENT_SECRET"),
 		KeycloakRedirectURL:   os.Getenv("KEYCLOAK_REDIRECT_URL"),
 		KeycloakPublicBaseURL: os.Getenv("KEYCLOAK_PUBLIC_BASE_URL"),
 

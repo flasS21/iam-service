@@ -55,6 +55,8 @@ func (h *Handler) login(c *gin.Context) {
 
 func (h *Handler) callback(c *gin.Context) {
 
+	log.Println("=== CALLBACK HIT ===")
+
 	p := h.providers.Get()
 
 	if !validateState(c) {

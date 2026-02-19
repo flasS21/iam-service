@@ -33,6 +33,7 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 		ctx,
 		cfg.KeycloakIssuer,
 		cfg.KeycloakClientID,
+		cfg.KeycloakClientSecret,
 		cfg.KeycloakRedirectURL,
 		cfg.KeycloakPublicBaseURL,
 	)
