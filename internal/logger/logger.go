@@ -5,6 +5,11 @@ import (
 	"os"
 )
 
+/*
+logger provides JSON-formatted structured logging with four severity levels.
+Supports Info, Error, Warn for standard logging and Fatal for terminating with exit code 1.
+All functions accept message string and optional fields map for structured data output.
+*/
 func Init() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(0)

@@ -10,6 +10,11 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+/*
+generatePKCE creates a PKCE code verifier and challenge for OAuth authorization.
+Generates a random 32-byte verifier, derives SHA256 challenge, and stores verifier
+in an HttpOnly secure cookie with 5-minute TTL. Returns verifier and challenge strings.
+*/
 const (
 	pkceCookieName = "__oauth_pkce"
 	pkceTTL        = 5 * time.Minute

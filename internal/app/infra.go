@@ -12,6 +12,13 @@ import (
 	_ "github.com/lib/pq"
 )
 
+/*
+setupInfra initializes and connects to PostgreSQL database and Redis.
+Establishes database connection, verifies connectivity, runs migrations,
+and initializes Redis client. Returns Infra struct containing both connections
+or an error if any initialization step fails.
+*/
+
 type Infra struct {
 	DB    *db.DB
 	Redis *redis.Client

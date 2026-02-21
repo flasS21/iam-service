@@ -8,11 +8,18 @@ import (
 	"iam-service/internal/auth/provider"
 	"iam-service/internal/auth/resolver"
 	"iam-service/internal/logger"
+	"iam-service/internal/middleware"
 	"iam-service/internal/session"
 
 	"github.com/gin-gonic/gin"
 )
 
+/*
+Handler manages OAuth/OIDC authentication flow and session lifecycle.
+Orchestrates login initiation, OAuth callback handling with state/PKCE validation,
+code exchange with identity provider, session creation in Redis, and logout operations.
+Supports single session logout and logout-all across user devices via Redis pipeline.
+*/
 type Handler struct {
 	providers    *provider.Registry
 	sessionStore session.Store
@@ -140,14 +147,17 @@ func (h *Handler) callback(c *gin.Context) {
 	}
 
 	now := time.Now()
-	absoluteExpiry := now.Add(24 * time.Hour)
+
+	// absoluteExpiry := now.Add(24 * time.Hour)
+	absoluteExpiry := now.Add(500 * time.Second)
+	idleExpiry := now.Add(middleware.IdleTimeout)
 
 	sess := session.Session{
 		SessionID:         sessionID,
 		UserID:            userID,
 		CreatedAt:         now,
 		AbsoluteExpiresAt: absoluteExpiry,
-		ExpiresAt:         absoluteExpiry,
+		ExpiresAt:         idleExpiry,
 	}
 
 	if err := h.sessionStore.Create(c.Request.Context(), sess); err != nil {

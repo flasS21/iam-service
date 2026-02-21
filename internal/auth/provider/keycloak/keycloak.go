@@ -12,6 +12,12 @@ import (
 	"golang.org/x/oauth2"
 )
 
+/*
+keycloak.New() initializes a Keycloak OIDC provider with OAuth2 configuration.
+Validates required configuration fields, establishes OIDC provider connection,
+creates ID token verifier, and configures OAuth2 endpoint with PKCE support.
+Returns initialized Provider or error if OIDC discovery or validation fails.
+*/
 const providerName = "keycloak"
 
 type Provider struct {
@@ -41,10 +47,8 @@ func New(
 		ClientID: clientID,
 	})
 
-	// Endpoint: oidcProvider.Endpoint(),
 	// ep := oidcProvider.Endpoint()
 	// ep.AuthURL = publicBaseURL + "/protocol/openid-connect/auth"
-
 	oauthCfg := &oauth2.Config{
 		ClientID:     clientID,
 		ClientSecret: clientSecret,

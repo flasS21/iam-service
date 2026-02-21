@@ -9,6 +9,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+/*
+generateState creates a random CSRF protection token for OAuth authorization.
+Generates a random 32-byte state value, encodes it in base64, and stores it
+in an HttpOnly secure cookie with 5-minute TTL. Returns the state string for
+redirect to authorization endpoint.
+*/
 const (
 	stateCookieName = "__oauth_state"
 	stateTTL        = 5 * time.Minute

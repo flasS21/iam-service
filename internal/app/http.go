@@ -15,6 +15,14 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+/*
+setupHTTP configures the HTTP router with all dependencies, middleware, and routes.
+It delegates infrastructure initialization (database, Redis, Keycloak) to setupInfra,
+then creates session store and identity resolver. Registers public routes, health check,
+and protected API/web routes with authentication middleware. Returns configured Gin engine,
+cleanup function for database closure, and any initialization error.
+*/
+
 func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() error, error) {
 
 	infra, err := setupInfra(ctx, cfg)

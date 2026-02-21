@@ -11,6 +11,12 @@ import (
 	"github.com/google/uuid"
 )
 
+/*
+db_resolver.Resolve() maps OAuth identity to application user by Keycloak subject.
+Queries database for existing user by keycloak_sub. If not found, creates new user
+with email and email_verified fields. Returns user ID string or error if database
+operation fails.
+*/
 type DBResolver struct {
 	db *db.DB
 }

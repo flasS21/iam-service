@@ -7,6 +7,11 @@ import (
 	goredis "github.com/redis/go-redis/v9"
 )
 
+/*
+redis.New() initializes a Redis client with connection validation.
+Connects to Redis server at specified address with authentication, pings to verify
+connectivity within 2-second timeout. Returns initialized Client or error if connection fails.
+*/
 type Client struct {
 	*goredis.Client
 }

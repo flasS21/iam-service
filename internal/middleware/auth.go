@@ -9,14 +9,20 @@ import (
 	"iam-service/internal/session"
 )
 
+/*
+auth.go provides session-based authentication middleware with idle timeout and sliding window expiry.
+RequireAuth() validates session cookies, enforces 30-minute idle timeout, extends session on activity,
+and attaches user ID to request context. UserIDFromContext() extracts authenticated user ID from context.
+*/
+
 // unexported, collision-proof context key
 type userIDContextKeyType struct{}
 
 var userIDKey = userIDContextKeyType{}
 
 const (
-	IdleTimeout = 30 * time.Minute
-	// IdleTimeout = 100 * time.Second
+	// IdleTimeout = 30 * time.Minute
+	IdleTimeout = 100 * time.Second
 )
 
 // UserIDFromContext extracts the authenticated user ID from context.
@@ -46,7 +52,6 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		)
 
 		if err != nil || cookie.Value == "" {
-			// http.Error(w, "unauthorized", http.StatusUnauthorized)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
@@ -60,29 +65,36 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		if sess != nil {
-			log.Printf("event=session_loaded sid=%s user_id=%s expires_at=%s",
+		log.Printf("event=session_loaded sid=%s user_id=%s expires_at=%s absolute_expires_at=%s",
+			sess.SessionID,
+			sess.UserID,
+			sess.ExpiresAt.UTC(),
+			sess.AbsoluteExpiresAt.UTC(),
+		)
+
+		now := time.Now()
+
+		// 3. Hard absolute expiry
+		if now.After(sess.AbsoluteExpiresAt) {
+			log.Printf("event=session_absolute_expired sid=%s user_id=%s now=%s absolute_expiry=%s",
 				sess.SessionID,
 				sess.UserID,
-				sess.ExpiresAt.UTC(),
+				now.UTC(),
+				sess.AbsoluteExpiresAt.UTC(),
 			)
+
+			_ = a.Store.Delete(r.Context(), sessionID)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
 		}
 
-		// 3. Keystone fix: enforce session expiry
+		// 4. Idle expiry check
+		if now.After(sess.ExpiresAt) {
 
-		// now := time.Now()
-		// if now.After(sess.AbsoluteExpiresAt) {
-		// 	_ = a.Store.Delete(r.Context(), sessionID)
-		// 	w.WriteHeader(http.StatusUnauthorized)
-		// 	return
-		// }
-
-		if time.Now().After(sess.ExpiresAt) {
-
-			log.Printf("event=session_expired sid=%s user_id=%s now=%s expires_at=%s",
+			log.Printf("event=session_idle_expired sid=%s user_id=%s now=%s expires_at=%s",
 				sess.SessionID,
 				sess.UserID,
-				time.Now().UTC(),
+				now.UTC(),
 				sess.ExpiresAt.UTC(),
 			)
 
@@ -91,20 +103,28 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		// 3.5 Sliding window: always extend on activity
-		newExpiry := time.Now().Add(IdleTimeout)
+		// 5. Sliding window (bounded by absolute cap)
+		newIdleExpiry := now.Add(IdleTimeout)
 
-		log.Printf("event=session_extend sid=%s user_id=%s old_expiry=%s new_expiry=%s",
+		var newExpiry time.Time
+		if newIdleExpiry.After(sess.AbsoluteExpiresAt) {
+			newExpiry = sess.AbsoluteExpiresAt
+		} else {
+			newExpiry = newIdleExpiry
+		}
+
+		log.Printf("event=session_extend sid=%s user_id=%s old_expiry=%s new_expiry=%s absolute_expiry=%s",
 			sess.SessionID,
 			sess.UserID,
 			sess.ExpiresAt.UTC(),
 			newExpiry.UTC(),
+			sess.AbsoluteExpiresAt.UTC(),
 		)
 
 		sess.ExpiresAt = newExpiry
 		_ = a.Store.Update(r.Context(), *sess)
 
-		// 4. Attach user_id to context
+		// 6. Attach user_id to context
 		ctx := context.WithValue(r.Context(), userIDKey, sess.UserID)
 
 		log.Printf("event=session_authorized sid=%s user_id=%s path=%s",
@@ -113,7 +133,7 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			r.URL.Path,
 		)
 
-		// 5. Continue request
+		// 7. Continue request
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

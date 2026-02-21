@@ -5,6 +5,12 @@ import (
 	"time"
 )
 
+/*
+cookie.go manages session cookie lifecycle with secure defaults.
+SetCookie() issues __Host- prefixed session cookies with normalized options enforcing HttpOnly.
+ClearCookie() removes session cookies by setting MaxAge to -1.
+CookieOptions.normalize() applies safe defaults without breaking caller configuration.
+*/
 const (
 	CookieName = "__Host-session"
 )

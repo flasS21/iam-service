@@ -12,6 +12,12 @@ import (
 	"iam-service/internal/logger"
 )
 
+/*
+main initializes and runs the IAM service application.
+It handles configuration loading, graceful shutdown on interrupt signals,
+and manages the application lifecycle. The service listens for SIGINT and
+SIGTERM signals to initiate a controlled shutdown with a 10-second timeout.
+*/
 func main() {
 	logger.Init()
 	cfg := config.Load()
@@ -42,7 +48,7 @@ func main() {
 		"port": cfg.AppPort,
 	})
 
-	<-ctx.Done() // wait for Ctrl+C
+	<-ctx.Done()
 
 	logger.Info("shutdown signal received", nil)
 

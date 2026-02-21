@@ -7,6 +7,13 @@ import (
 	"iam-service/internal/config"
 )
 
+/*
+New initializes the application with HTTP server and dependencies.
+It sets up the router and any required resources through setupHTTP,
+then configures an HTTP server listening on the port specified in config.
+Returns the initialized App or an error if setup fails.
+*/
+
 type App struct {
 	httpServer *http.Server
 	cleanup    func() error
