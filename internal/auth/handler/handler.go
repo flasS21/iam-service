@@ -136,6 +136,14 @@ func (h *Handler) callback(c *gin.Context) {
 		return
 	}
 
+	// Fetch current session version
+	version, err := h.resolver.GetSessionVersion(c.Request.Context(), userID)
+	if err != nil {
+		clearAuthArtifacts(c)
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
 	sessionID, err := session.GenerateID()
 	if err != nil {
 		// c.JSON(http.StatusInternalServerError, gin.H{
@@ -158,6 +166,7 @@ func (h *Handler) callback(c *gin.Context) {
 		CreatedAt:         now,
 		AbsoluteExpiresAt: absoluteExpiry,
 		ExpiresAt:         idleExpiry,
+		Version:           version,
 	}
 
 	if err := h.sessionStore.Create(c.Request.Context(), sess); err != nil {

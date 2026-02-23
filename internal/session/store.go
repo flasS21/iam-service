@@ -5,18 +5,13 @@ import (
 	"time"
 )
 
-// type Session struct {
-// 	SessionID string
-// 	UserID    string
-// 	ExpiresAt time.Time
-// }
-
 type Session struct {
 	SessionID         string
 	UserID            string
 	CreatedAt         time.Time
 	AbsoluteExpiresAt time.Time
-	ExpiresAt         time.Time // current effective expiry (idle-adjusted)
+	ExpiresAt         time.Time
+	Version           int
 }
 
 type Store interface {

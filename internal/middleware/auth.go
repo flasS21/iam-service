@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"iam-service/internal/auth/resolver"
 	"iam-service/internal/session"
 )
 
@@ -32,11 +33,15 @@ func UserIDFromContext(ctx context.Context) (string, bool) {
 }
 
 type AuthMiddleware struct {
-	Store session.Store
+	Store    session.Store
+	Resolver resolver.Resolver
 }
 
-func NewAuthMiddleware(store session.Store) *AuthMiddleware {
-	return &AuthMiddleware{Store: store}
+func NewAuthMiddleware(store session.Store, resolver resolver.Resolver) *AuthMiddleware {
+	return &AuthMiddleware{
+		Store:    store,
+		Resolver: resolver,
+	}
 }
 
 func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
@@ -71,6 +76,27 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			sess.ExpiresAt.UTC(),
 			sess.AbsoluteExpiresAt.UTC(),
 		)
+
+		// 🔐 Session version enforcement
+		currentVersion, err := a.Resolver.GetSessionVersion(r.Context(), sess.UserID)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if sess.Version != currentVersion {
+			log.Printf(
+				"event=session_version_mismatch sid=%s user_id=%s session_version=%d current_version=%d",
+				sess.SessionID,
+				sess.UserID,
+				sess.Version,
+				currentVersion,
+			)
+
+			_ = a.Store.Delete(r.Context(), sessionID)
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
 
 		now := time.Now()
 

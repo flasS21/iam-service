@@ -11,4 +11,14 @@ type Resolver interface {
 		ctx context.Context,
 		identity *auth.Identity,
 	) (userID string, err error)
+
+	GetSessionVersion(
+		ctx context.Context,
+		userID string,
+	) (int, error)
+
+	IncrementSessionVersion(
+		ctx context.Context,
+		userID string,
+	) error
 }

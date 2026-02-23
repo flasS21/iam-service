@@ -59,7 +59,7 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 		identityResolver,
 	)
 
-	authMiddleware := middleware.NewAuthMiddleware(sessionStore)
+	authMiddleware := middleware.NewAuthMiddleware(sessionStore, identityResolver)
 
 	// ----------------------------
 	// Router

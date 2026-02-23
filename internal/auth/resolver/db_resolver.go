@@ -80,3 +80,41 @@ func (r *DBResolver) Resolve(
 
 	return userID.String(), nil
 }
+
+func (r *DBResolver) GetSessionVersion(
+	ctx context.Context,
+	userID string,
+) (int, error) {
+
+	var version int
+
+	err := r.db.QueryRowContext(
+		ctx,
+		`
+		SELECT session_version
+		FROM public.users
+		WHERE id = $1
+		`,
+		userID,
+	).Scan(&version)
+
+	return version, err
+}
+
+func (r *DBResolver) IncrementSessionVersion(
+	ctx context.Context,
+	userID string,
+) error {
+
+	_, err := r.db.ExecContext(
+		ctx,
+		`
+		UPDATE public.users
+		SET session_version = session_version + 1
+		WHERE id = $1
+		`,
+		userID,
+	)
+
+	return err
+}
