@@ -98,6 +98,27 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
+		// 🔐 CSRF enforcement for state-changing methods
+		if r.Method == http.MethodPost ||
+			r.Method == http.MethodPut ||
+			r.Method == http.MethodPatch ||
+			r.Method == http.MethodDelete {
+
+			headerToken := r.Header.Get("X-CSRF-Token")
+
+			if headerToken == "" || headerToken != sess.CSRFToken {
+				log.Printf(
+					"event=csrf_mismatch sid=%s user_id=%s method=%s",
+					sess.SessionID,
+					sess.UserID,
+					r.Method,
+				)
+
+				w.WriteHeader(http.StatusForbidden)
+				return
+			}
+		}
+
 		now := time.Now()
 
 		// 3. Hard absolute expiry

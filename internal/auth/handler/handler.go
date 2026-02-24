@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"log"
 	"net/http"
 	"time"
@@ -154,6 +156,13 @@ func (h *Handler) callback(c *gin.Context) {
 		return
 	}
 
+	csrfToken, err := generateCSRFToken()
+	if err != nil {
+		clearAuthArtifacts(c)
+		c.AbortWithStatus(http.StatusInternalServerError)
+		return
+	}
+
 	now := time.Now()
 
 	// absoluteExpiry := now.Add(24 * time.Hour)
@@ -167,6 +176,7 @@ func (h *Handler) callback(c *gin.Context) {
 		AbsoluteExpiresAt: absoluteExpiry,
 		ExpiresAt:         idleExpiry,
 		Version:           version,
+		CSRFToken:         csrfToken,
 	}
 
 	if err := h.sessionStore.Create(c.Request.Context(), sess); err != nil {
@@ -182,6 +192,16 @@ func (h *Handler) callback(c *gin.Context) {
 		Secure:   true,
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    csrfToken,
+		Path:     "/",
+		HttpOnly: false, // must be readable by JS
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  absoluteExpiry,
 	})
 
 	log.Printf("[LOGIN_SUCCESS] user_id=%s sid=%s ip=%s",
@@ -330,4 +350,12 @@ func (h *Handler) redirectToKeycloakLogin(c *gin.Context) {
 
 	authURL := keycloakProvider.AuthCodeURL(state, codeChallenge)
 	c.Redirect(http.StatusFound, authURL)
+}
+
+func generateCSRFToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
