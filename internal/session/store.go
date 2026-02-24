@@ -12,6 +12,7 @@ type Session struct {
 	AbsoluteExpiresAt time.Time
 	ExpiresAt         time.Time
 	Version           int
+	CSRFToken         string `json:"csrf_token"`
 }
 
 type Store interface {
