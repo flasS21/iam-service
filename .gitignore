@@ -27,7 +27,7 @@ dist/
 /web-test
 /mvp-test
 /keycloak
-
+/tasks
 # ================================
 # Go workspace cache
 # ================================
