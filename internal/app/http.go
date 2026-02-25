@@ -72,6 +72,7 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 	// Public Routes
 	// ----------------------------
 
+	// OAuth routes remain public
 	authHandler.RegisterRoutes(router)
 
 	router.GET("/health", func(c *gin.Context) {
@@ -112,6 +113,21 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 	web.GET("/dashboard", func(c *gin.Context) {
 		c.File("./mvp-test/dashboard.html")
 	})
+
+	// ----------------------------
+	// Protected Auth Routes (Logout)
+	// ----------------------------
+	// Logout endpoints must:
+	//  - Require valid session
+	//  - Enforce CSRF
+	//  - NOT be publicly accessible
+	// Browsing remains public.
+
+	authProtected := router.Group("/")
+	authProtected.Use(middleware.GinRequireAuth(authMiddleware))
+
+	authProtected.POST("/auth/logout", authHandler.Logout)
+	authProtected.POST("/auth/logout-all", authHandler.LogoutAll)
 
 	// -----------------------------------
 	// Demo Frontend (web-test)

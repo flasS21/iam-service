@@ -23,7 +23,8 @@ var userIDKey = userIDContextKeyType{}
 
 const (
 	// IdleTimeout = 30 * time.Minute
-	IdleTimeout = 100 * time.Second
+	// IdleTimeout = 100 * time.Second
+	IdleTimeout = 5 * time.Minute
 )
 
 // UserIDFromContext extracts the authenticated user ID from context.

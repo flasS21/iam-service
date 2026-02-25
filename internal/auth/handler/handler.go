@@ -43,9 +43,6 @@ func NewHandler(
 func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.GET("/oauth/login", h.login)
 	r.GET("/oauth/callback", h.callback)
-	r.POST("/auth/logout", h.Logout)
-	r.POST("/auth/logout-all", h.LogoutAll)
-
 	for _, route := range r.Routes() {
 		log.Printf("[ROUTE] %s %s", route.Method, route.Path)
 	}
@@ -166,7 +163,8 @@ func (h *Handler) callback(c *gin.Context) {
 	now := time.Now()
 
 	// absoluteExpiry := now.Add(24 * time.Hour)
-	absoluteExpiry := now.Add(500 * time.Second)
+	// absoluteExpiry := now.Add(500 * time.Second)
+	absoluteExpiry := now.Add(10 * time.Minute)
 	idleExpiry := now.Add(middleware.IdleTimeout)
 
 	sess := session.Session{
@@ -249,6 +247,16 @@ func (h *Handler) Logout(c *gin.Context) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: false,
+		Secure:   true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
 	// 4. Idempotent response
 	c.Status(http.StatusNoContent)
 }
@@ -312,6 +320,16 @@ func (h *Handler) LogoutAll(c *gin.Context) {
 		Path:     "/",
 		Secure:   true,
 		HttpOnly: true,
+		SameSite: http.SameSiteLaxMode,
+	})
+
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "csrf_token",
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HttpOnly: false,
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
 

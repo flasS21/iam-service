@@ -22,13 +22,12 @@ dist/
 # misc and doc repos
 # ================================
 /misc
-/docs
 /kc_backup
 /backup
 /web-test
 /mvp-test
 /keycloak
-
+/tasks
 # ================================
 # Go workspace cache
 # ================================
