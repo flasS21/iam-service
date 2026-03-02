@@ -1,0 +1,36 @@
+_format_version: "3.0"
+_transform: true
+
+services:
+  - name: iam-backend
+    url: http://iam-api:8090   
+    tags: ["iam", "phase1"]
+    routes:
+      - name: iam-route
+        paths:
+          - /api
+          - /dashboard
+          - /oauth
+          - /health
+        strip_path: false
+        preserve_host: false
+        protocols:
+          - http
+        methods:
+          - GET
+          - POST
+          - PUT
+          - DELETE
+    plugins:
+      - name: rate-limiting
+        config:
+          minute: 60
+          policy: local
+          limit_by: ip
+        enabled: true
+        
+      - name: file-log
+        config:
+          path: /dev/stdout
+          reopen: true
+        enabled: true
