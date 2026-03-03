@@ -75,19 +75,22 @@ func (r *RedisStore) Get(ctx context.Context, sessionID string) (*Session, error
 }
 
 func (r *RedisStore) Delete(ctx context.Context, sessionID string) error {
-	// First fetch session to know user_id
+	// Fetch session to know user_id
 	s, err := r.Get(ctx, sessionID)
 	if err != nil {
 		return err
 	}
 	if s == nil {
-		return nil // already gone (idempotent)
+		return nil
 	}
+
+	userKey := r.userKey(s.UserID)
 
 	pipe := r.client.TxPipeline()
 
-	pipe.Del(ctx, r.key(sessionID))
-	pipe.SRem(ctx, r.userKey(s.UserID), sessionID)
+	delCmd := pipe.Del(ctx, r.key(sessionID))
+	pipe.SRem(ctx, userKey, sessionID)
+	cardCmd := pipe.SCard(ctx, userKey)
 
 	log.Printf("[SESSION_DELETE] sid=%s user_id=%s",
 		sessionID,
@@ -95,7 +98,18 @@ func (r *RedisStore) Delete(ctx context.Context, sessionID string) error {
 	)
 
 	_, err = pipe.Exec(ctx)
-	return err
+	if err != nil {
+		return err
+	}
+
+	// Now safe to inspect cardinality
+	if cardCmd.Val() == 0 {
+		return r.client.Del(ctx, userKey).Err()
+	}
+
+	_ = delCmd // optional, avoids unused warning
+	return nil
+
 }
 
 func (r *RedisStore) Update(ctx context.Context, s Session) error {
