@@ -135,6 +135,27 @@ func (h *Handler) callback(c *gin.Context) {
 		return
 	}
 
+	// Block disabled users at login
+	status, err := h.resolver.GetUserStatus(c.Request.Context(), userID)
+	if err != nil {
+		clearAuthArtifacts(c)
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
+	if status != "active" {
+		log.Printf(
+			"event=login_blocked_user_disabled user_id=%s status=%s ip=%s",
+			userID,
+			status,
+			c.ClientIP(),
+		)
+
+		clearAuthArtifacts(c)
+		c.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+
 	// Fetch current session version
 	version, err := h.resolver.GetSessionVersion(c.Request.Context(), userID)
 	if err != nil {

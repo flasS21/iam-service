@@ -21,4 +21,9 @@ type Resolver interface {
 		ctx context.Context,
 		userID string,
 	) error
+
+	GetUserStatus(
+		ctx context.Context,
+		userID string,
+	) (string, error)
 }
