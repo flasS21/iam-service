@@ -78,7 +78,7 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			sess.AbsoluteExpiresAt.UTC(),
 		)
 
-		// 🔐 Session version enforcement
+		// 3. Session version enforcement
 		currentVersion, err := a.Resolver.GetSessionVersion(r.Context(), sess.UserID)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -99,7 +99,29 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		// 🔐 CSRF enforcement for state-changing methods
+		// 4. Account status enforcement (strict 401)
+		status, err := a.Resolver.GetUserStatus(r.Context(), sess.UserID)
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		if status != "active" {
+			log.Printf(
+				"event=user_disabled sid=%s user_id=%s status=%s",
+				sess.SessionID,
+				sess.UserID,
+				status,
+			)
+
+			// Kill session immediately
+			_ = a.Store.Delete(r.Context(), sessionID)
+
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		// 5. CSRF enforcement for state-changing methods
 		if r.Method == http.MethodPost ||
 			r.Method == http.MethodPut ||
 			r.Method == http.MethodPatch ||
@@ -122,7 +144,7 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 
 		now := time.Now()
 
-		// 3. Hard absolute expiry
+		// 6. Hard absolute expiry
 		if now.After(sess.AbsoluteExpiresAt) {
 			log.Printf("event=session_absolute_expired sid=%s user_id=%s now=%s absolute_expiry=%s",
 				sess.SessionID,
@@ -136,7 +158,7 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		// 4. Idle expiry check
+		// 7. Idle expiry check
 		if now.After(sess.ExpiresAt) {
 
 			log.Printf("event=session_idle_expired sid=%s user_id=%s now=%s expires_at=%s",
@@ -151,7 +173,7 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			return
 		}
 
-		// 5. Sliding window (bounded by absolute cap)
+		// 8. Sliding window (bounded by absolute cap)
 		newIdleExpiry := now.Add(IdleTimeout)
 
 		var newExpiry time.Time
@@ -172,7 +194,7 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		sess.ExpiresAt = newExpiry
 		_ = a.Store.Update(r.Context(), *sess)
 
-		// 6. Attach user_id to context
+		// 9. Attach user_id to context
 		ctx := context.WithValue(r.Context(), userIDKey, sess.UserID)
 
 		log.Printf("event=session_authorized sid=%s user_id=%s path=%s",
@@ -181,7 +203,8 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			r.URL.Path,
 		)
 
-		// 7. Continue request
+		// 10. Continue request
 		next.ServeHTTP(w, r.WithContext(ctx))
+
 	})
 }

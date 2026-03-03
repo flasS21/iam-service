@@ -59,7 +59,7 @@ func (r *DBResolver) Resolve(
 		return "", err
 	}
 
-	// 2️⃣ Create new user
+	// Create new user
 	err = r.db.QueryRowContext(
 		ctx,
 		`
@@ -117,4 +117,24 @@ func (r *DBResolver) IncrementSessionVersion(
 	)
 
 	return err
+}
+
+func (r *DBResolver) GetUserStatus(
+	ctx context.Context,
+	userID string,
+) (string, error) {
+
+	var status string
+
+	err := r.db.QueryRowContext(
+		ctx,
+		`
+		SELECT status
+		FROM public.users
+		WHERE id = $1
+		`,
+		userID,
+	).Scan(&status)
+
+	return status, err
 }
