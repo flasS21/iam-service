@@ -12,6 +12,9 @@ services:
           - /dashboard
           - /oauth
           - /health
+          - /auth/logout  
+          - /auth/logout-all
+
         strip_path: false
         preserve_host: false
         protocols:
