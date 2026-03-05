@@ -1,0 +1,34 @@
+version: '3.8'
+
+networks:
+  kong-net:
+    driver: bridge
+  iam-network:
+    external: true
+    name: iam-service_default   
+
+services:
+  kong:
+    image: kong:3.8-ubuntu
+    container_name: kong
+    command: sh -c "rm -rf /usr/local/kong/sockets/* && kong start"
+    restart: "no"
+    networks:
+      - kong-net
+      - iam-network
+    volumes:
+      - ./kong.yaml:/kong/declarative/kong.yml:ro
+    environment:
+      KONG_DATABASE: "off"                        
+      KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
+      KONG_PROXY_ACCESS_LOG: /dev/stdout
+      KONG_ADMIN_ACCESS_LOG: /dev/stdout
+      KONG_PROXY_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_ERROR_LOG: /dev/stderr
+      KONG_ADMIN_LISTEN: 127.0.0.1:8001
+      KONG_TRUSTED_IPS: "0.0.0.0/0, ::/0"          
+      KONG_REAL_IP_HEADER: X-Forwarded-For
+      KONG_REAL_IP_RECURSIVE: "on"
+    ports:
+      - "8000:8000"     
+      
