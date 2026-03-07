@@ -1,4 +1,4 @@
-version: '3.8'
+# version: '3.8'
 
 networks:
   kong-net:
@@ -12,7 +12,7 @@ services:
     image: kong:3.8-ubuntu
     container_name: kong
     command: sh -c "rm -rf /usr/local/kong/sockets/* && kong start"
-    restart: "no"
+    restart: unless-stopped
     networks:
       - kong-net
       - iam-network
