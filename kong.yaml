@@ -24,6 +24,7 @@ services:
           - POST
           - PUT
           - DELETE
+
     plugins:
       - name: rate-limiting
         config:
@@ -37,3 +38,30 @@ services:
           path: /dev/stdout
           reopen: true
         enabled: true
+
+      - name: request-size-limiting
+        config:
+          allowed_payload_size: 2  # 2MB
+        enabled: true
+
+      - name: response-transformer
+        config:
+          add:
+            headers:
+              - "X-Frame-Options: DENY"
+              - "X-Content-Type-Options: nosniff"
+              - "Referrer-Policy: no-referrer"
+        enabled: true
+
+
+routes:
+  - name: gateway-health
+    paths:
+      - /gateway/health
+    methods:
+      - GET
+    plugins:
+      - name: request-termination
+        config:
+          status_code: 200
+          message: '{"status":"ok"}'
