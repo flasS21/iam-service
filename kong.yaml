@@ -14,6 +14,7 @@ services:
           - /health
           - /auth/logout  
           - /auth/logout-all
+          - /admin
 
         strip_path: false
         preserve_host: false
@@ -23,6 +24,7 @@ services:
           - GET
           - POST
           - PUT
+          - PATCH
           - DELETE
 
     plugins:

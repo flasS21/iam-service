@@ -20,4 +20,5 @@ type Store interface {
 	Get(ctx context.Context, sessionID string) (*Session, error)
 	Update(ctx context.Context, s Session) error
 	Delete(ctx context.Context, sessionID string) error
+	DeleteAllUserSessions(ctx context.Context, userID string) error
 }
