@@ -3,6 +3,8 @@ package logger
 import (
 	"log"
 	"os"
+
+	"github.com/gin-gonic/gin"
 )
 
 /*
@@ -31,4 +33,20 @@ func Fatal(msg string, fields map[string]any) {
 
 func Warn(msg string, fields map[string]any) {
 	log.Printf(`{"level":"WARN","msg":"%s","fields":%v}`, msg, fields)
+}
+
+func WithRequestID(c *gin.Context, fields map[string]any) map[string]any {
+	reqID := c.GetString("request_id")
+
+	if reqID == "" {
+		reqID = "unknown"
+	}
+
+	if fields == nil {
+		fields = make(map[string]any)
+	}
+
+	fields["request_id"] = reqID
+
+	return fields
 }
