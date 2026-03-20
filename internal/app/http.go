@@ -69,6 +69,7 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 
 	router := gin.New()
 	router.Use(gin.Recovery())
+	router.Use(middleware.RequestIDMiddleware())
 
 	// ----------------------------
 	// Public Routes
@@ -95,7 +96,11 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 	api.Use(middleware.GinRequireAuth(authMiddleware))
 
 	api.GET("/ping", func(c *gin.Context) {
-		c.JSON(200, gin.H{"ok": true})
+		requestID := c.GetString("request_id")
+		c.JSON(200, gin.H{
+			"ok":         true,
+			"request_id": requestID,
+		})
 	})
 
 	api.GET("/me", func(c *gin.Context) {

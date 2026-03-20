@@ -9,12 +9,13 @@ services:
       - name: iam-route
         paths:
           - /api
-          - /dashboard
-          - /oauth
           - /health
-          - /auth/logout  
-          - /auth/logout-all
+          - /oauth
+          - /auth
           - /admin
+          - /dashboard
+          # - /auth/logout  
+          # - /auth/logout-all
 
         strip_path: false
         preserve_host: false
@@ -28,6 +29,13 @@ services:
           - DELETE
 
     plugins:
+
+      - name: correlation-id
+        config:
+          header_name: X-Request-ID
+          generator: uuid
+          echo_downstream: true
+
       - name: rate-limiting
         config:
           minute: 60
