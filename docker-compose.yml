@@ -1,5 +1,7 @@
 services:
   iam-api:
+    volumes:
+      - ./certs:/app/certs:ro 
     dns:
       - 8.8.8.8
       - 1.1.1.1
@@ -8,8 +10,9 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    # ports:
-    #   - "8090:8090"
+    ports:
+      - "8443:8443"
+      # - "8090:8090"   
     env_file:
       - .env
     depends_on:
