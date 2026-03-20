@@ -12,6 +12,8 @@ import (
 	"iam-service/internal/middleware"
 	"iam-service/internal/session"
 
+	adminhandler "iam-service/internal/admin/handler"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -143,9 +145,23 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 	// })
 
 	// ----------------------------
-	// Cleanup
+	// A D M I N - A P I
 	// ----------------------------
 
+	adminHandler := adminhandler.New(infra.DB.DB, sessionStore)
+
+	admin := router.Group("/admin")
+	admin.Use(middleware.GinRequireAuth(authMiddleware))
+	{
+		admin.GET("/users", adminHandler.ListUsers)
+		admin.GET("/users/:id", adminHandler.GetUser)
+		admin.PATCH("/users/:id/status", adminHandler.UpdateUserStatus)
+		admin.POST("/users/:id/logout-all", adminHandler.LogoutAllSessions)
+	}
+
+	// ----------------------------
+	// Cleanup
+	// ----------------------------
 	return router, func() error {
 		return infra.DB.Close()
 	}, nil

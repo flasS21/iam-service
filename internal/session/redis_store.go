@@ -147,3 +147,34 @@ func (r *RedisStore) userKey(userID string) string {
 func (r *RedisStore) Client() *redis.Client {
 	return r.client
 }
+
+func (r *RedisStore) DeleteAllUserSessions(ctx context.Context, userID string) error {
+
+	userKey := r.userKey(userID)
+
+	// get all session ids for this user
+	sessionIDs, err := r.client.SMembers(ctx, userKey).Result()
+	if err != nil {
+		return err
+	}
+
+	if len(sessionIDs) == 0 {
+		return nil
+	}
+
+	pipe := r.client.TxPipeline()
+
+	for _, sid := range sessionIDs {
+		pipe.Del(ctx, r.key(sid))
+	}
+
+	pipe.Del(ctx, userKey)
+
+	log.Printf("[SESSION_LOGOUT_ALL] user_id=%s sessions=%d",
+		userID,
+		len(sessionIDs),
+	)
+
+	_, err = pipe.Exec(ctx)
+	return err
+}
