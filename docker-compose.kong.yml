@@ -18,6 +18,7 @@ services:
       - iam-network
     volumes:
       - ./kong.yaml:/kong/declarative/kong.yml:ro
+      - ./certs:/etc/kong/certs:ro
     environment:
       KONG_DATABASE: "off"                        
       KONG_DECLARATIVE_CONFIG: /kong/declarative/kong.yml
@@ -29,6 +30,11 @@ services:
       KONG_TRUSTED_IPS: "0.0.0.0/0, ::/0"          
       KONG_REAL_IP_HEADER: X-Forwarded-For
       KONG_REAL_IP_RECURSIVE: "on"
+      KONG_NGINX_PROXY_PROXY_SSL_VERIFY: "on"
+      KONG_NGINX_PROXY_PROXY_SSL_VERIFY_DEPTH: "3"
+      KONG_NGINX_PROXY_PROXY_SSL_TRUSTED_CERTIFICATE: "/etc/kong/certs/ca.crt"
+      KONG_NGINX_PROXY_PROXY_SSL_CERTIFICATE: "/etc/kong/certs/kong.crt"
+      KONG_NGINX_PROXY_PROXY_SSL_CERTIFICATE_KEY: "/etc/kong/certs/kong.key"
     ports:
       - "8000:8000"     
       

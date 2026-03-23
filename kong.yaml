@@ -3,7 +3,7 @@ _transform: true
 
 services:
   - name: iam-backend
-    url: http://iam-api:8090   
+    url: https://iam-api:8443   
     tags: ["iam", "phase1"]
     routes:
       - name: iam-route
@@ -14,9 +14,8 @@ services:
           - /auth
           - /admin
           - /dashboard
-          # - /auth/logout  
-          # - /auth/logout-all
-
+          - /auth/logout  
+          - /auth/logout-all
         strip_path: false
         preserve_host: false
         protocols:
@@ -29,7 +28,6 @@ services:
           - DELETE
 
     plugins:
-
       - name: correlation-id
         config:
           header_name: X-Request-ID
@@ -51,7 +49,7 @@ services:
 
       - name: request-size-limiting
         config:
-          allowed_payload_size: 2  # 2MB
+          allowed_payload_size: 2
         enabled: true
 
       - name: response-transformer
@@ -63,11 +61,14 @@ services:
               - "Referrer-Policy: no-referrer"
         enabled: true
 
-
 routes:
   - name: gateway-health
     paths:
       - /gateway/health
+    strip_path: false
+    preserve_host: false
+    protocols:
+      - http
     methods:
       - GET
     plugins:
