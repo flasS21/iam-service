@@ -2,13 +2,18 @@ package app
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	"iam-service/internal/auth/handler"
 	"iam-service/internal/auth/provider"
 	"iam-service/internal/auth/provider/keycloak"
-
 	"iam-service/internal/auth/resolver"
 	"iam-service/internal/config"
+	"iam-service/internal/logger"
 	"iam-service/internal/middleware"
 	"iam-service/internal/session"
 
@@ -149,6 +154,63 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 	// 	c.File("./web-test/dashboard.html")
 	// })
 
+	// ============================================
+	// mTLS Implementation
+	// ============================================
+
+	// Load CA certificate
+	caCert, err := ioutil.ReadFile("/app/certs/ca.crt")
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to read CA certificate: %w", err)
+	}
+
+	caCertPool := x509.NewCertPool()
+	if !caCertPool.AppendCertsFromPEM(caCert) {
+		return nil, nil, fmt.Errorf("failed to parse CA certificate")
+	}
+
+	// Configure TLS with client authentication
+	tlsConfig := &tls.Config{
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		ClientCAs:  caCertPool,
+		MinVersion: tls.VersionTLS12,
+		MaxVersion: tls.VersionTLS13,
+		CurvePreferences: []tls.CurveID{
+			tls.CurveP256,
+			tls.X25519,
+			tls.CurveP384,
+		},
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
+		},
+		PreferServerCipherSuites: true,
+	}
+
+	// Create HTTPS server with mTLS
+	httpsServer := &http.Server{
+		Addr:      ":8443",
+		Handler:   router,
+		TLSConfig: tlsConfig,
+	}
+
+	// Start HTTPS server in background
+	go func() {
+		logger.Info("starting HTTPS server on port 8443", nil)
+		if err := httpsServer.ListenAndServeTLS("/app/certs/iam.crt", "/app/certs/iam.key"); err != nil && err != http.ErrServerClosed {
+			logger.Error("HTTPS server failed", map[string]any{
+				"error": err.Error(),
+			})
+			logger.Fatal("HTTPS server failed", map[string]any{
+				"error": err.Error(),
+			})
+		}
+	}()
+
 	// ----------------------------
 	// A D M I N - A P I
 	// ----------------------------
@@ -168,6 +230,9 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 	// Cleanup
 	// ----------------------------
 	return router, func() error {
+		if err := httpsServer.Close(); err != nil {
+			return err
+		}
 		return infra.DB.Close()
 	}, nil
 }
