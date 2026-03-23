@@ -14,10 +14,6 @@ services:
           - /auth
           - /admin
           - /dashboard
-          # - /auth/logout  
-          # - /auth/logout-all
-
-
           - /auth/logout  
           - /auth/logout-all
         strip_path: false
@@ -30,25 +26,8 @@ services:
           - PUT
           - PATCH
           - DELETE
-      
-      
-      - name: gateway-health
-        paths:
-          - /gateway/health
-        strip_path: false
-        preserve_host: false
-        protocols:
-          - http
-        methods:
-          - GET
-        plugins:
-          - name: request-termination
-            config:
-              status_code: 200
-              message: '{"status":"ok"}'
 
     plugins:
-
       - name: correlation-id
         config:
           header_name: X-Request-ID
@@ -81,3 +60,19 @@ services:
               - "X-Content-Type-Options: nosniff"
               - "Referrer-Policy: no-referrer"
         enabled: true
+
+routes:
+  - name: gateway-health
+    paths:
+      - /gateway/health
+    strip_path: false
+    preserve_host: false
+    protocols:
+      - http
+    methods:
+      - GET
+    plugins:
+      - name: request-termination
+        config:
+          status_code: 200
+          message: '{"status":"ok"}'
