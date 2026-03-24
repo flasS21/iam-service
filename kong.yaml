@@ -7,13 +7,14 @@ services:
     tags: ["iam", "phase1"]
     routes:
       - name: iam-route
+        hosts:
+          - api.localhost
         paths:
           - /api
           - /health
           - /oauth
-          - /auth
-          - /admin
           - /dashboard
+          - /auth
           - /auth/logout  
           - /auth/logout-all
         strip_path: false
@@ -26,7 +27,28 @@ services:
           - PUT
           - PATCH
           - DELETE
-
+      - name: iam-internal-route
+        hosts:
+          - internal.localhost
+        paths:
+          - /admin
+        strip_path: false
+        preserve_host: false
+        protocols:
+          - http
+        methods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+        plugins:
+          - name: ip-restriction
+            config:
+              allow:
+                - 127.0.0.1
+                - 172.18.0.0/16
+        
     plugins:
       - name: correlation-id
         config:
