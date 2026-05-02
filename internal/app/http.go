@@ -87,10 +87,10 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 		c.JSON(200, gin.H{"status": "ok"})
 	})
 
-	router.Static("/mvp-test", "./mvp-test")
+	router.Static("/test-ui", "./test-ui/auth-kong-dashboard")
 
 	router.GET("/", func(c *gin.Context) {
-		c.File("./mvp-test/index.html")
+		c.File("./test-ui/auth-kong-dashboard/index.html")
 	})
 
 	// ----------------------------
@@ -123,7 +123,7 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 	web.Use(middleware.GinRequireAuth(authMiddleware))
 
 	web.GET("/dashboard", func(c *gin.Context) {
-		c.File("./mvp-test/dashboard.html")
+		c.File("./test-ui/auth-kong-dashboard/dashboard.html")
 	})
 
 	// ----------------------------
@@ -140,19 +140,6 @@ func setupHTTP(ctx context.Context, cfg config.Config) (*gin.Engine, func() erro
 
 	authProtected.POST("/auth/logout", authHandler.Logout)
 	authProtected.POST("/auth/logout-all", authHandler.LogoutAll)
-
-	// -----------------------------------
-	// Demo Frontend (web-test)
-	// -----------------------------------
-	// router.Static("/web-test", "./web-test")
-
-	// router.GET("/", func(c *gin.Context) {
-	// 	c.File("./web-test/index.html")
-	// })
-
-	// router.GET("/dashboard.html", func(c *gin.Context) {
-	// 	c.File("./web-test/dashboard.html")
-	// })
 
 	// ============================================
 	// mTLS Implementation

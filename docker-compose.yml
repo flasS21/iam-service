@@ -10,9 +10,6 @@ services:
     build:
       context: .
       dockerfile: docker/Dockerfile
-    ports:
-      - "8443:8443"
-      # - "8090:8090"   
     env_file:
       - .env
     depends_on:
