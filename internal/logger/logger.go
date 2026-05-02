@@ -44,6 +44,10 @@ func Info(msg string, fields map[string]any) {
 	logJSON("INFO", msg, fields)
 }
 
+func Error(msg string, fields map[string]any) {
+	logJSON("ERROR", msg, fields)
+}
+
 func Fatal(msg string, fields map[string]any) {
 	logJSON("FATAL", msg, fields)
 	os.Exit(1)
