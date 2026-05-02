@@ -210,6 +210,20 @@
   const LOGOUT_URL = "/auth/logout";
   const LOGOUT_ALL_URL = "/auth/logout-all";
 
+  function generateUUID() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === "x" ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  function getHeaders() {
+    return {
+      "X-Request-ID": generateUUID()
+    };
+  }
+
   function getCSRFToken() {
     return document.cookie
       .split("; ")
@@ -236,7 +250,7 @@
     reqIdEl.style.display = "none";
 
     try {
-      const res = await fetch(PING_URL, { credentials: "include" });
+      const res = await fetch(PING_URL, { credentials: "include", headers: getHeaders() });
       const reqId = res.headers.get("X-Request-ID");
 
       if (res.status === 200) {
@@ -274,10 +288,12 @@
     }
 
     try {
+      const headers = getHeaders();
+      headers["X-CSRF-Token"] = csrf;
       const res = await fetch(LOGOUT_URL, {
         method: "POST",
         credentials: "include",
-        headers: { "X-CSRF-Token": csrf }
+        headers: headers
       });
       if (res.status === 204 || res.status === 200) {
         alert("Logged out");
@@ -298,10 +314,12 @@
     }
 
     try {
+      const headers = getHeaders();
+      headers["X-CSRF-Token"] = csrf;
       const res = await fetch(LOGOUT_ALL_URL, {
         method: "POST",
         credentials: "include",
-        headers: { "X-CSRF-Token": csrf }
+        headers: headers
       });
       if (res.status === 204 || res.status === 200) {
         alert("All sessions logged out");

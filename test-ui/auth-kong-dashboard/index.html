@@ -214,6 +214,20 @@
   const INTERNAL_API = "http://internal.localhost:8000/admin";
   const GATEWAY_HEALTH = "/gateway/health";
 
+  function generateUUID() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === "x" ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  function getHeaders() {
+    return {
+      "X-Request-ID": generateUUID()
+    };
+  }
+
   function goToDashboard() {
     window.location.href = "/dashboard.html";
   }
@@ -238,12 +252,13 @@
   async function testPublicApi() {
     updateStatus("Public API", "—", "Fetching...");
     try {
-      const res = await fetch(PUBLIC_API, { credentials: "include" });
+      const res = await fetch(PUBLIC_API, { credentials: "include", headers: getHeaders() });
+      const reqId = res.headers.get("X-Request-ID");
       let msg = "";
       if (res.status === 200) msg = "Allowed (public endpoint accessible)";
       else if (res.status === 401) msg = "Auth required - but route is reachable";
       else msg = `Unexpected status: ${res.status}`;
-      updateStatus("Public API", res.status, msg);
+      updateStatus("Public API", res.status, msg, reqId ? `<small>Request ID: ${reqId}</small>` : "");
     } catch (e) {
       updateStatus("Public API", "Error", `Network error: ${e.message}`);
     }
@@ -252,13 +267,14 @@
   async function testInternalViaPublic() {
     updateStatus("Internal via Public", "—", "Fetching...");
     try {
-      const res = await fetch(INTERNAL_VIA_PUBLIC, { credentials: "include" });
+      const res = await fetch(INTERNAL_VIA_PUBLIC, { credentials: "include", headers: getHeaders() });
+      const reqId = res.headers.get("X-Request-ID");
       let msg = "";
       if (res.status === 404) msg = "Blocked - internal route not exposed on public host (correct)";
       else if (res.status === 403) msg = "IP restriction or Kong blocking (expected for internal)";
       else if (res.status === 200) msg = "⚠️ Unexpected - internal route leaked!";
       else msg = `Status: ${res.status}`;
-      updateStatus("Internal via Public", res.status, msg);
+      updateStatus("Internal via Public", res.status, msg, reqId ? `<small>Request ID: ${reqId}</small>` : "");
     } catch (e) {
       updateStatus("Internal via Public", "Error", `Network error: ${e.message}`);
     }
@@ -267,13 +283,14 @@
   async function testInternalApi() {
     updateStatus("Internal API", "—", "Fetching...");
     try {
-      const res = await fetch(INTERNAL_API, { credentials: "include" });
+      const res = await fetch(INTERNAL_API, { credentials: "include", headers: getHeaders() });
+      const reqId = res.headers.get("X-Request-ID");
       let msg = "";
       if (res.status === 403) msg = "Blocked by IP restriction (your IP not in allowlist)";
       else if (res.status === 200) msg = "Allowed - your IP is in allowlist (127.0.0.1 or container network)";
       else if (res.status === 404) msg = "Not found - but route exists, maybe wrong path?";
       else msg = `Status: ${res.status}`;
-      updateStatus("Internal API", res.status, msg);
+      updateStatus("Internal API", res.status, msg, reqId ? `<small>Request ID: ${reqId}</small>` : "");
     } catch (e) {
       updateStatus("Internal API", "Error", `Network error: ${e.message}`);
     }
@@ -282,7 +299,8 @@
   async function testGatewayHealth() {
     updateStatus("Gateway Health", "—", "Fetching...");
     try {
-      const res = await fetch(GATEWAY_HEALTH);
+      const res = await fetch(GATEWAY_HEALTH, { headers: getHeaders() });
+      const reqId = res.headers.get("X-Request-ID");
       let body = "";
       try { body = await res.json(); } catch(e) {}
       let msg = "";
@@ -291,7 +309,7 @@
       } else {
         msg = `Gateway responded with ${res.status}`;
       }
-      updateStatus("Gateway Health", res.status, msg, `<small>Response: ${JSON.stringify(body)}</small>`);
+      updateStatus("Gateway Health", res.status, msg, `<small>Response: ${JSON.stringify(body)}${reqId ? `<br/>Request ID: ${reqId}</small>` : ""}`);
     } catch (e) {
       updateStatus("Gateway Health", "Error", `Network error: ${e.message}`);
     }
