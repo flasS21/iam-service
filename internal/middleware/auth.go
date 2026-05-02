@@ -2,11 +2,11 @@ package middleware
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"time"
 
 	"iam-service/internal/auth/resolver"
+	"iam-service/internal/logger"
 	"iam-service/internal/session"
 )
 
@@ -22,8 +22,6 @@ type userIDContextKeyType struct{}
 var userIDKey = userIDContextKeyType{}
 
 const (
-	// IdleTimeout = 30 * time.Minute
-	// IdleTimeout = 100 * time.Second
 	IdleTimeout = 5 * time.Minute
 )
 
@@ -48,14 +46,13 @@ func NewAuthMiddleware(store session.Store, resolver resolver.Resolver) *AuthMid
 func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
-		// 1. Read session cookie
 		cookie, err := r.Cookie(session.CookieName)
 
-		log.Printf("event=session_cookie_read path=%s ip=%s has_cookie=%t",
-			r.URL.Path,
-			r.RemoteAddr,
-			err == nil && cookie.Value != "",
-		)
+		logger.Info("session cookie read", map[string]any{
+			"path":       r.URL.Path,
+			"ip":         r.RemoteAddr,
+			"has_cookie": err == nil && cookie.Value != "",
+		})
 
 		if err != nil || cookie.Value == "" {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -64,21 +61,19 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 
 		sessionID := cookie.Value
 
-		// 2. Load session
 		sess, err := a.Store.Get(r.Context(), sessionID)
 		if err != nil || sess == nil {
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		log.Printf("event=session_loaded sid=%s user_id=%s expires_at=%s absolute_expires_at=%s",
-			sess.SessionID,
-			sess.UserID,
-			sess.ExpiresAt.UTC(),
-			sess.AbsoluteExpiresAt.UTC(),
-		)
+		logger.Info("session loaded", map[string]any{
+			"session_id":        sess.SessionID,
+			"user_id":           sess.UserID,
+			"expires_at":        sess.ExpiresAt.UTC(),
+			"absolute_expires":  sess.AbsoluteExpiresAt.UTC(),
+		})
 
-		// 3. Session version enforcement
 		currentVersion, err := a.Resolver.GetSessionVersion(r.Context(), sess.UserID)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -86,20 +81,18 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		if sess.Version != currentVersion {
-			log.Printf(
-				"event=session_version_mismatch sid=%s user_id=%s session_version=%d current_version=%d",
-				sess.SessionID,
-				sess.UserID,
-				sess.Version,
-				currentVersion,
-			)
+			logger.Warn("session version mismatch", map[string]any{
+				"session_id":      sess.SessionID,
+				"user_id":         sess.UserID,
+				"session_version": sess.Version,
+				"current_version": currentVersion,
+			})
 
 			_ = a.Store.Delete(r.Context(), sessionID)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		// 4. Account status enforcement (strict 401)
 		status, err := a.Resolver.GetUserStatus(r.Context(), sess.UserID)
 		if err != nil {
 			w.WriteHeader(http.StatusUnauthorized)
@@ -107,21 +100,18 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 		}
 
 		if status != "active" {
-			log.Printf(
-				"event=user_disabled sid=%s user_id=%s status=%s",
-				sess.SessionID,
-				sess.UserID,
-				status,
-			)
+			logger.Warn("user disabled", map[string]any{
+				"session_id": sess.SessionID,
+				"user_id":    sess.UserID,
+				"status":     status,
+			})
 
-			// Kill session immediately
 			_ = a.Store.Delete(r.Context(), sessionID)
 
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		// 5. CSRF enforcement for state-changing methods
 		if r.Method == http.MethodPost ||
 			r.Method == http.MethodPut ||
 			r.Method == http.MethodPatch ||
@@ -130,12 +120,11 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			headerToken := r.Header.Get("X-CSRF-Token")
 
 			if headerToken == "" || headerToken != sess.CSRFToken {
-				log.Printf(
-					"event=csrf_mismatch sid=%s user_id=%s method=%s",
-					sess.SessionID,
-					sess.UserID,
-					r.Method,
-				)
+				logger.Warn("csrf mismatch", map[string]any{
+					"session_id": sess.SessionID,
+					"user_id":    sess.UserID,
+					"method":     r.Method,
+				})
 
 				w.WriteHeader(http.StatusForbidden)
 				return
@@ -144,36 +133,32 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 
 		now := time.Now()
 
-		// 6. Hard absolute expiry
 		if now.After(sess.AbsoluteExpiresAt) {
-			log.Printf("event=session_absolute_expired sid=%s user_id=%s now=%s absolute_expiry=%s",
-				sess.SessionID,
-				sess.UserID,
-				now.UTC(),
-				sess.AbsoluteExpiresAt.UTC(),
-			)
+			logger.Info("session absolute expired", map[string]any{
+				"session_id":      sess.SessionID,
+				"user_id":         sess.UserID,
+				"now":             now.UTC(),
+				"absolute_expiry": sess.AbsoluteExpiresAt.UTC(),
+			})
 
 			_ = a.Store.Delete(r.Context(), sessionID)
 			w.WriteHeader(http.StatusUnauthorized)
 			return
 		}
 
-		// 7. Idle expiry check
 		if now.After(sess.ExpiresAt) {
-
-			log.Printf("event=session_idle_expired sid=%s user_id=%s now=%s expires_at=%s",
-				sess.SessionID,
-				sess.UserID,
-				now.UTC(),
-				sess.ExpiresAt.UTC(),
-			)
+			logger.Info("session idle expired", map[string]any{
+				"session_id": sess.SessionID,
+				"user_id":    sess.UserID,
+				"now":        now.UTC(),
+				"expires_at": sess.ExpiresAt.UTC(),
+			})
 
 			_ = a.Store.Delete(r.Context(), sessionID)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		// 8. Sliding window (bounded by absolute cap)
 		newIdleExpiry := now.Add(IdleTimeout)
 
 		var newExpiry time.Time
@@ -183,27 +168,25 @@ func (a *AuthMiddleware) RequireAuth(next http.Handler) http.Handler {
 			newExpiry = newIdleExpiry
 		}
 
-		log.Printf("event=session_extend sid=%s user_id=%s old_expiry=%s new_expiry=%s absolute_expiry=%s",
-			sess.SessionID,
-			sess.UserID,
-			sess.ExpiresAt.UTC(),
-			newExpiry.UTC(),
-			sess.AbsoluteExpiresAt.UTC(),
-		)
+		logger.Info("session extend", map[string]any{
+			"session_id":      sess.SessionID,
+			"user_id":         sess.UserID,
+			"old_expiry":      sess.ExpiresAt.UTC(),
+			"new_expiry":      newExpiry.UTC(),
+			"absolute_expiry": sess.AbsoluteExpiresAt.UTC(),
+		})
 
 		sess.ExpiresAt = newExpiry
 		_ = a.Store.Update(r.Context(), *sess)
 
-		// 9. Attach user_id to context
 		ctx := context.WithValue(r.Context(), userIDKey, sess.UserID)
 
-		log.Printf("event=session_authorized sid=%s user_id=%s path=%s",
-			sess.SessionID,
-			sess.UserID,
-			r.URL.Path,
-		)
+		logger.Info("session authorized", map[string]any{
+			"session_id": sess.SessionID,
+			"user_id":    sess.UserID,
+			"path":       r.URL.Path,
+		})
 
-		// 10. Continue request
 		next.ServeHTTP(w, r.WithContext(ctx))
 
 	})

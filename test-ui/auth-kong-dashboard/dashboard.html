@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session Authority | Dashboard</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+    }
+
+    .header {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 1rem;
+    }
+
+    .logo {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #059669, #10b981);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      letter-spacing: -0.02em;
+    }
+
+    .tagline {
+      color: #6b7280;
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid #eef2f6;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title i {
+      color: #10b981;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      background: #f3f4f6;
+      color: #1f2937;
+      width: 100%;
+    }
+
+    .btn-primary {
+      background: #10b981;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #059669;
+    }
+
+    .btn-danger {
+      background: #ef4444;
+      color: white;
+    }
+    .btn-danger:hover {
+      background: #dc2626;
+    }
+
+    .btn-warning {
+      background: #f97316;
+      color: white;
+    }
+    .btn-warning:hover {
+      background: #ea580c;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+    .btn-group .btn {
+      flex: 1;
+    }
+
+    .code-block {
+      background: #f1f5f9;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 0.8rem;
+      color: #1e293b;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 2rem;
+    }
+
+    .loading {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #e2e8f0;
+      border-radius: 50%;
+      border-top-color: #10b981;
+      animation: spin 0.6s linear infinite;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    hr {
+      margin: 1rem 0;
+      border: none;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 1rem; }
+      .container { max-width: 100%; }
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">Session Authority</div>
+    <div class="tagline">IAM Dashboard · Protected Area</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <i class="fas fa-user-shield"></i> Session Management
+    </div>
+
+    <div id="unauthButtons" class="btn-group">
+      <button class="btn btn-primary" onclick="login()"><i class="fas fa-key"></i> Login with OAuth</button>
+      <button class="btn" onclick="checkSession()"><i class="fas fa-sync-alt"></i> Check Session</button>
+    </div>
+
+    <div id="authButtons" class="btn-group hidden">
+      <button class="btn btn-danger" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+      <button class="btn btn-warning" onclick="logoutAll()"><i class="fas fa-power-off"></i> Logout All</button>
+      <button class="btn" onclick="checkSession()"><i class="fas fa-sync-alt"></i> Check Session</button>
+    </div>
+
+    <div class="code-block" id="status">
+      <span class="loading"></span> Checking session...
+    </div>
+    <div id="requestId" class="code-block" style="margin-top: 0.5rem; display: none;"></div>
+  </div>
+
+  <div class="footer">
+    <i class="fas fa-arrow-left"></i> <a href="/index.html" style="color:#10b981; text-decoration: none;">Back to FQDN Tests</a>
+  </div>
+</div>
+
+<script>
+  const LOGIN_URL = "/oauth/login";
+  const PING_URL = "/api/ping";
+  const LOGOUT_URL = "/auth/logout";
+  const LOGOUT_ALL_URL = "/auth/logout-all";
+
+  function getCSRFToken() {
+    return document.cookie
+      .split("; ")
+      .find(r => r.startsWith("csrf_token="))
+      ?.split("=")[1];
+  }
+
+  function toggleAuth(authenticated) {
+    const unauth = document.getElementById("unauthButtons");
+    const auth = document.getElementById("authButtons");
+    if (authenticated) {
+      unauth.classList.add("hidden");
+      auth.classList.remove("hidden");
+    } else {
+      unauth.classList.remove("hidden");
+      auth.classList.add("hidden");
+    }
+  }
+
+  async function checkSession() {
+    const statusEl = document.getElementById("status");
+    const reqIdEl = document.getElementById("requestId");
+    statusEl.innerHTML = '<span class="loading"></span> Checking...';
+    reqIdEl.style.display = "none";
+
+    try {
+      const res = await fetch(PING_URL, { credentials: "include" });
+      const reqId = res.headers.get("X-Request-ID");
+
+      if (res.status === 200) {
+        statusEl.innerHTML = `
+          <i class="fas fa-check-circle" style="color:#10b981"></i> ✅ Authenticated<br/>
+          Status: ${res.status}
+        `;
+        if (reqId) {
+          reqIdEl.innerHTML = `<i class="fas fa-fingerprint"></i> Request ID: ${reqId}`;
+          reqIdEl.style.display = "block";
+        }
+        toggleAuth(true);
+      } else {
+        statusEl.innerHTML = `
+          <i class="fas fa-times-circle" style="color:#ef4444"></i> ❌ Not authenticated<br/>
+          Status: ${res.status}
+        `;
+        toggleAuth(false);
+      }
+    } catch (err) {
+      statusEl.innerHTML = `<i class="fas fa-exclamation-triangle"></i> Error: ${err.message}`;
+      toggleAuth(false);
+    }
+  }
+
+  function login() {
+    window.location.href = LOGIN_URL;
+  }
+
+  async function logout() {
+    const csrf = getCSRFToken();
+    if (!csrf) {
+      alert("Missing CSRF token");
+      return;
+    }
+
+    try {
+      const res = await fetch(LOGOUT_URL, {
+        method: "POST",
+        credentials: "include",
+        headers: { "X-CSRF-Token": csrf }
+      });
+      if (res.status === 204 || res.status === 200) {
+        alert("Logged out");
+        window.location.href = "/index.html";
+      } else {
+        alert("Logout failed: " + res.status);
+      }
+    } catch (err) {
+      alert("Logout error: " + err.message);
+    }
+  }
+
+  async function logoutAll() {
+    const csrf = getCSRFToken();
+    if (!csrf) {
+      alert("Missing CSRF token");
+      return;
+    }
+
+    try {
+      const res = await fetch(LOGOUT_ALL_URL, {
+        method: "POST",
+        credentials: "include",
+        headers: { "X-CSRF-Token": csrf }
+      });
+      if (res.status === 204 || res.status === 200) {
+        alert("All sessions logged out");
+        window.location.href = "/index.html";
+      } else {
+        alert("Logout-all failed: " + res.status);
+      }
+    } catch (err) {
+      alert("Logout-all error: " + err.message);
+    }
+  }
+
+  checkSession();
+</script>
+</body>
+</html>

@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"time"
+
+	"iam-service/internal/logger"
 
 	"github.com/redis/go-redis/v9"
 )
@@ -47,11 +48,11 @@ func (r *RedisStore) Create(ctx context.Context, s Session) error {
 	pipe.Set(ctx, r.key(s.SessionID), data, ttl)
 	pipe.SAdd(ctx, r.userKey(s.UserID), s.SessionID)
 
-	log.Printf("[SESSION_CREATE] sid=%s user_id=%s expires_at=%s",
-		s.SessionID,
-		s.UserID,
-		s.ExpiresAt.UTC(),
-	)
+	logger.Info("session create", map[string]any{
+		"session_id": s.SessionID,
+		"user_id":    s.UserID,
+		"expires_at": s.ExpiresAt.UTC(),
+	})
 
 	_, err = pipe.Exec(ctx)
 	return err
@@ -75,7 +76,6 @@ func (r *RedisStore) Get(ctx context.Context, sessionID string) (*Session, error
 }
 
 func (r *RedisStore) Delete(ctx context.Context, sessionID string) error {
-	// Fetch session to know user_id
 	s, err := r.Get(ctx, sessionID)
 	if err != nil {
 		return err
@@ -92,22 +92,21 @@ func (r *RedisStore) Delete(ctx context.Context, sessionID string) error {
 	pipe.SRem(ctx, userKey, sessionID)
 	cardCmd := pipe.SCard(ctx, userKey)
 
-	log.Printf("[SESSION_DELETE] sid=%s user_id=%s",
-		sessionID,
-		s.UserID,
-	)
+	logger.Info("session delete", map[string]any{
+		"session_id": sessionID,
+		"user_id":    s.UserID,
+	})
 
 	_, err = pipe.Exec(ctx)
 	if err != nil {
 		return err
 	}
 
-	// Now safe to inspect cardinality
 	if cardCmd.Val() == 0 {
 		return r.client.Del(ctx, userKey).Err()
 	}
 
-	_ = delCmd // optional, avoids unused warning
+	_ = delCmd
 	return nil
 
 }
@@ -119,7 +118,6 @@ func (r *RedisStore) Update(ctx context.Context, s Session) error {
 
 	ttl := time.Until(s.ExpiresAt)
 	if ttl <= 0 {
-		// If expired, delete session instead of extending
 		return r.client.Del(ctx, r.key(s.SessionID)).Err()
 	}
 
@@ -128,10 +126,10 @@ func (r *RedisStore) Update(ctx context.Context, s Session) error {
 		return fmt.Errorf("session: failed to marshal: %w", err)
 	}
 
-	log.Printf("[SESSION_UPDATE] sid=%s new_expiry=%s",
-		s.SessionID,
-		s.ExpiresAt.UTC(),
-	)
+	logger.Info("session update", map[string]any{
+		"session_id": s.SessionID,
+		"new_expiry": s.ExpiresAt.UTC(),
+	})
 
 	pipe := r.client.TxPipeline()
 	pipe.Set(ctx, r.key(s.SessionID), data, ttl)
@@ -152,7 +150,6 @@ func (r *RedisStore) DeleteAllUserSessions(ctx context.Context, userID string) e
 
 	userKey := r.userKey(userID)
 
-	// get all session ids for this user
 	sessionIDs, err := r.client.SMembers(ctx, userKey).Result()
 	if err != nil {
 		return err
@@ -170,10 +167,10 @@ func (r *RedisStore) DeleteAllUserSessions(ctx context.Context, userID string) e
 
 	pipe.Del(ctx, userKey)
 
-	log.Printf("[SESSION_LOGOUT_ALL] user_id=%s sessions=%d",
-		userID,
-		len(sessionIDs),
-	)
+	logger.Info("session logout-all", map[string]any{
+		"user_id":  userID,
+		"sessions": len(sessionIDs),
+	})
 
 	_, err = pipe.Exec(ctx)
 	return err

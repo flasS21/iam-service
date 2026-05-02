@@ -1,8 +1,10 @@
 package logger
 
 import (
+	"encoding/json"
 	"log"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -15,24 +17,45 @@ All functions accept message string and optional fields map for structured data 
 func Init() {
 	log.SetOutput(os.Stdout)
 	log.SetFlags(0)
-	log.Printf(`{"level":"INFO","msg":"logger initialized"}`)
+	Info("logger initialized", nil)
 }
 
 func Info(msg string, fields map[string]any) {
-	log.Printf(`{"level":"INFO","msg":"%s","fields":%v}`, msg, fields)
+	logJSON("INFO", msg, fields)
 }
 
 func Error(msg string, fields map[string]any) {
-	log.Printf(`{"level":"ERROR","msg":"%s","fields":%v}`, msg, fields)
+	logJSON("ERROR", msg, fields)
 }
 
 func Fatal(msg string, fields map[string]any) {
-	log.Printf(`{"level":"FATAL","msg":"%s","fields":%v}`, msg, fields)
+	logJSON("FATAL", msg, fields)
 	os.Exit(1)
 }
 
 func Warn(msg string, fields map[string]any) {
-	log.Printf(`{"level":"WARN","msg":"%s","fields":%v}`, msg, fields)
+	logJSON("WARN", msg, fields)
+}
+
+func logJSON(level, msg string, fields map[string]any) {
+	if fields == nil {
+		fields = map[string]any{}
+	}
+
+	entry := map[string]any{
+		"ts":     time.Now().UTC().Format(time.RFC3339Nano),
+		"level":  level,
+		"msg":    msg,
+		"fields": fields,
+	}
+
+	b, err := json.Marshal(entry)
+	if err != nil {
+		log.Printf(`{"level":"ERROR","msg":"logger marshal failed","fields":{"error":"%v"}}`, err)
+		return
+	}
+
+	log.Print(string(b))
 }
 
 func WithRequestID(c *gin.Context, fields map[string]any) map[string]any {
