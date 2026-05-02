@@ -1,19 +1,19 @@
 # Auth Flow Test Runbook
 
-This runbook validates the end-to-end auth flow (login, protected API, logout, logout-all) through the current IAM + Kong setup.
+Validates the end-to-end authentication flow including OAuth login, protected API access, session logout, and global session invalidation through the IAM service and Kong gateway.
 
 ## Scope
 
 - OAuth login via `/oauth/login`
-- Protected API checks (`/api/ping`, `/api/me`)
+- Protected API endpoints (`/api/ping`, `/api/me`)
 - Protected dashboard route (`/dashboard`)
 - Logout and logout-all (`/auth/logout`, `/auth/logout-all`)
-- Request correlation header (`X-Request-ID`) from Kong
+- Request correlation header (`X-Request-ID`) propagation
 
 ## Prerequisites
 
 - Docker and Docker Compose installed
-- Keycloak is configured and reachable by IAM service
+- Keycloak configured and reachable by IAM service
 - Certificates exist in `./certs` (`ca.crt`, `iam.crt`, `iam.key`, `kong.crt`, `kong.key`)
 - Local hosts entries:
 
@@ -50,7 +50,7 @@ Expected:
 - `/gateway/health` -> `200` and body contains `{"status":"ok"}`
 - `/health` -> `200` from backend
 
-## Browser Auth Flow (Primary)
+## Browser Auth Flow
 
 1. Open: `http://api.localhost:8000/`
 2. Click **Enter Dashboard**.

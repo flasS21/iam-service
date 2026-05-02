@@ -1,23 +1,23 @@
 # Session Authority
 
-Interview-ready IAM showcase with OAuth login, Redis-backed sessions, CSRF-protected logout, Kong gateway policies, and mTLS between gateway and backend.
+Production-grade IAM service with OAuth/OIDC authentication, Redis session management, CSRF-protected endpoints, Kong gateway enforcement, and mutual TLS between gateway and backend.
 
-> Product name: **Session Authority**.  
+> Product name: **Session Authority**.
 > Repository slug remains `iam-service` for compatibility with existing history, links, and imports.
 
 ## Project Identity
 
-**Session Authority** emphasizes:
-- session lifecycle control
-- policy enforcement at the gateway edge
-- audit-ready authentication flow design
+**Session Authority** delivers:
+- Session lifecycle management with Redis persistence
+- Policy enforcement at the gateway edge
+- Comprehensive authentication and authorization controls
 
-## What This Project Demonstrates
+## Key Capabilities
 
-- OAuth/OIDC login flow with callback handling
+- OAuth/OIDC login flow with callback handling and PKCE
 - Session lifecycle in Redis (create, validate, invalidate, logout-all)
 - CSRF-protected logout endpoints
-- Protected API and protected web dashboard route
+- Protected API and web dashboard routes
 - Kong as edge gateway for routing, rate limiting, security headers, request correlation
 - Host-based route isolation (`api.localhost` vs `internal.localhost`)
 - mTLS on upstream path (Kong -> IAM API)
@@ -80,20 +80,20 @@ docker compose -f docker-compose.kong.yml up -d
 3) Open demo UI
 - [http://api.localhost:8000/](http://api.localhost:8000/)
 
-## Demo Flow (Interview Script)
+## Demo Flow
 
 1. Open `http://api.localhost:8000/`
 2. Click **Enter Dashboard**
 3. Click **Login with OAuth**
 4. Complete IdP login
-5. Back on dashboard, show:
-   - session check success
-   - request passing through Kong (`X-Request-ID`)
-6. Trigger **Logout** and verify protected endpoint fails afterwards
-7. Trigger **Logout All** and explain global session invalidation strategy
-8. Show route isolation:
-   - `api.localhost/admin` blocked/not exposed
-   - `internal.localhost/admin` controlled by IP restriction + auth
+5. On dashboard, verify:
+   - session check returns authenticated
+   - request correlation header present (`X-Request-ID`)
+6. Trigger **Logout** and verify protected endpoint returns 401
+7. Trigger **Logout All** and confirm all user sessions invalidated
+8. Demonstrate route isolation:
+   - `api.localhost/admin` returns 404 (not exposed on public host)
+   - `internal.localhost/admin` enforces IP allowlist + authentication
 
 ## Validation Commands
 
