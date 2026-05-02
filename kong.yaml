@@ -2,18 +2,22 @@ _format_version: "3.0"
 _transform: true
 
 services:
+
   - name: iam-backend
     url: https://iam-api:8443   
     tags: ["iam", "phase1"]
+
     routes:
+
       - name: iam-route
+        hosts:
+          - api.localhost
         paths:
           - /api
           - /health
           - /oauth
-          - /auth
-          - /admin
           - /dashboard
+          - /auth
           - /auth/logout  
           - /auth/logout-all
         strip_path: false
@@ -27,6 +31,29 @@ services:
           - PATCH
           - DELETE
 
+      - name: iam-internal-route
+        hosts:
+          - internal.localhost
+        paths:
+          - /admin
+        strip_path: false
+        preserve_host: false
+        protocols:
+          - http
+        methods:
+          - GET
+          - POST
+          - PUT
+          - PATCH
+          - DELETE
+        plugins:
+          - name: ip-restriction
+            config:
+              allow:
+                - ::1
+                - 127.0.0.1
+                - 172.18.0.0/16
+
     plugins:
       - name: correlation-id
         config:
@@ -39,18 +66,15 @@ services:
           minute: 60
           policy: local
           limit_by: ip
-        enabled: true
-        
+
       - name: file-log
         config:
           path: /dev/stdout
           reopen: true
-        enabled: true
 
       - name: request-size-limiting
         config:
           allowed_payload_size: 2
-        enabled: true
 
       - name: response-transformer
         config:
@@ -59,7 +83,23 @@ services:
               - "X-Frame-Options: DENY"
               - "X-Content-Type-Options: nosniff"
               - "Referrer-Policy: no-referrer"
-        enabled: true
+
+  - name: static-frontend
+    url: http://static-server:80
+    routes:
+      - name: static-route
+        hosts:
+          - api.localhost
+        paths:
+          - /
+          - /index.html
+          - /dashboard.html
+        strip_path: false
+        preserve_host: false
+        protocols:
+          - http
+        methods:
+          - GET
 
 routes:
   - name: gateway-health

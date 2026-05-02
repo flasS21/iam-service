@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Session Authority | IAM Gateway Demo</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: #f9fafb;
+      color: #1f2937;
+      line-height: 1.5;
+      padding: 2rem;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+    }
+
+    .header {
+      margin-bottom: 2rem;
+      border-bottom: 1px solid #e5e7eb;
+      padding-bottom: 1rem;
+    }
+
+    .logo {
+      font-size: 1.75rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #059669, #10b981);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      letter-spacing: -0.02em;
+    }
+
+    .tagline {
+      color: #6b7280;
+      font-size: 0.9rem;
+      margin-top: 0.25rem;
+    }
+
+    .card {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 1px 2px rgba(0,0,0,0.03);
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid #eef2f6;
+    }
+
+    .card-title {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .card-title i {
+      color: #10b981;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      border-radius: 0.5rem;
+      font-weight: 500;
+      font-size: 0.875rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      background: #f3f4f6;
+      color: #1f2937;
+    }
+
+    .btn-primary {
+      background: #10b981;
+      color: white;
+    }
+    .btn-primary:hover {
+      background: #059669;
+    }
+
+    .btn-secondary {
+      background: white;
+      border-color: #d1d5db;
+    }
+    .btn-secondary:hover {
+      background: #f9fafb;
+    }
+
+    .btn-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin: 1rem 0;
+    }
+
+    .code-block {
+      background: #f1f5f9;
+      border-radius: 0.5rem;
+      padding: 0.75rem;
+      font-family: 'SF Mono', 'Menlo', monospace;
+      font-size: 0.8rem;
+      color: #1e293b;
+      border: 1px solid #e2e8f0;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .status-badge {
+      display: inline-block;
+      background: #f1f5f9;
+      border-radius: 0.25rem;
+      padding: 0.125rem 0.5rem;
+      font-size: 0.75rem;
+      font-weight: 500;
+      margin-left: 0.5rem;
+    }
+
+    hr {
+      margin: 1.5rem 0;
+      border: none;
+      border-top: 1px solid #e5e7eb;
+    }
+
+    .footer {
+      text-align: center;
+      font-size: 0.75rem;
+      color: #9ca3af;
+      margin-top: 2rem;
+    }
+
+    .note {
+      font-size: 0.8rem;
+      color: #6b7280;
+      margin: 0.5rem 0;
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 1rem; }
+      .container { max-width: 100%; }
+    }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <div class="logo">Session Authority</div>
+    <div class="tagline">IAM Gateway · Kong + mTLS + FQDN</div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <i class="fas fa-arrow-right-to-bracket"></i> Access Dashboard
+    </div>
+    <button class="btn btn-primary" onclick="goToDashboard()">
+      <i class="fas fa-key"></i> Enter Dashboard
+    </button>
+  </div>
+
+  <div class="card">
+    <div class="card-title">
+      <i class="fas fa-globe"></i> FQDN & IP Allow-list Tests
+    </div>
+    <div class="note">
+      Validates Kong route isolation and <code>ip-restriction</code> plugin (see <code>kong.yaml</code>).<br>
+      <strong>Public routes:</strong> <code>api.localhost/*</code> - open.<br>
+      <strong>Internal route:</strong> <code>internal.localhost/admin</code> - allow only <code>127.0.0.1</code> and <code>172.18.0.0/16</code>.
+    </div>
+
+    <div class="btn-group">
+      <button class="btn btn-secondary" onclick="testPublicApi()">
+        <i class="fas fa-globe"></i> Public API
+      </button>
+      <button class="btn btn-secondary" onclick="testInternalViaPublic()">
+        <i class="fas fa-ban"></i> Internal via Public ❌
+      </button>
+      <button class="btn btn-secondary" onclick="testInternalApi()">
+        <i class="fas fa-lock"></i> Internal API ✅
+      </button>
+      <button class="btn btn-secondary" onclick="testGatewayHealth()">
+        <i class="fas fa-heartbeat"></i> Gateway Health
+      </button>
+    </div>
+
+    <div class="code-block" id="fqdnStatus">
+      <i class="fas fa-chart-line"></i> Click any test above
+    </div>
+  </div>
+
+  <div class="footer">
+    <i class="fas fa-microchip"></i> Kong gateway demo - Routes & IP allow-list enforced
+  </div>
+</div>
+
+<script>
+  const PUBLIC_API = "/api/ping";
+  const INTERNAL_VIA_PUBLIC = "/admin";
+  const INTERNAL_API = "http://internal.localhost:8000/admin";
+  const GATEWAY_HEALTH = "/gateway/health";
+
+  function generateUUID() {
+    return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === "x" ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  }
+
+  function getHeaders() {
+    return {
+      "X-Request-ID": generateUUID()
+    };
+  }
+
+  function goToDashboard() {
+    window.location.href = "/dashboard.html";
+  }
+
+  function updateStatus(label, statusCode, message, extra = "") {
+    const el = document.getElementById("fqdnStatus");
+    let icon = "";
+    if (statusCode === 200) icon = "✅";
+    else if (statusCode === 403) icon = "⛔";
+    else if (statusCode === 401) icon = "🔐";
+    else if (statusCode === 404) icon = "🚫";
+    else icon = "⚠️";
+
+    el.innerHTML = `
+      <strong>${label}</strong><br/>
+      Status: ${statusCode}<br/>
+      Result: ${icon} ${message}<br/>
+      ${extra}
+    `;
+  }
+
+  async function testPublicApi() {
+    updateStatus("Public API", "—", "Fetching...");
+    try {
+      const res = await fetch(PUBLIC_API, { credentials: "include", headers: getHeaders() });
+      const reqId = res.headers.get("X-Request-ID");
+      let msg = "";
+      if (res.status === 200) msg = "Allowed (public endpoint accessible)";
+      else if (res.status === 401) msg = "Auth required - but route is reachable";
+      else msg = `Unexpected status: ${res.status}`;
+      updateStatus("Public API", res.status, msg, reqId ? `<small>Request ID: ${reqId}</small>` : "");
+    } catch (e) {
+      updateStatus("Public API", "Error", `Network error: ${e.message}`);
+    }
+  }
+
+  async function testInternalViaPublic() {
+    updateStatus("Internal via Public", "—", "Fetching...");
+    try {
+      const res = await fetch(INTERNAL_VIA_PUBLIC, { credentials: "include", headers: getHeaders() });
+      const reqId = res.headers.get("X-Request-ID");
+      let msg = "";
+      if (res.status === 404) msg = "Blocked - internal route not exposed on public host (correct)";
+      else if (res.status === 403) msg = "IP restriction or Kong blocking (expected for internal)";
+      else if (res.status === 200) msg = "⚠️ Unexpected - internal route leaked!";
+      else msg = `Status: ${res.status}`;
+      updateStatus("Internal via Public", res.status, msg, reqId ? `<small>Request ID: ${reqId}</small>` : "");
+    } catch (e) {
+      updateStatus("Internal via Public", "Error", `Network error: ${e.message}`);
+    }
+  }
+
+  async function testInternalApi() {
+    updateStatus("Internal API", "—", "Fetching...");
+    try {
+      const res = await fetch(INTERNAL_API, { credentials: "include", headers: getHeaders() });
+      const reqId = res.headers.get("X-Request-ID");
+      let msg = "";
+      if (res.status === 403) msg = "Blocked by IP restriction (your IP not in allowlist)";
+      else if (res.status === 200) msg = "Allowed - your IP is in allowlist (127.0.0.1 or container network)";
+      else if (res.status === 404) msg = "Not found - but route exists, maybe wrong path?";
+      else msg = `Status: ${res.status}`;
+      updateStatus("Internal API", res.status, msg, reqId ? `<small>Request ID: ${reqId}</small>` : "");
+    } catch (e) {
+      updateStatus("Internal API", "Error", `Network error: ${e.message}`);
+    }
+  }
+
+  async function testGatewayHealth() {
+    updateStatus("Gateway Health", "—", "Fetching...");
+    try {
+      const res = await fetch(GATEWAY_HEALTH, { headers: getHeaders() });
+      const reqId = res.headers.get("X-Request-ID");
+      let body = "";
+      try { body = await res.json(); } catch(e) {}
+      let msg = "";
+      if (res.status === 200 && body.status === "ok") {
+        msg = "Gateway health check passed ✅";
+      } else {
+        msg = `Gateway responded with ${res.status}`;
+      }
+      updateStatus("Gateway Health", res.status, msg, `<small>Response: ${JSON.stringify(body)}${reqId ? `<br/>Request ID: ${reqId}</small>` : ""}`);
+    } catch (e) {
+      updateStatus("Gateway Health", "Error", `Network error: ${e.message}`);
+    }
+  }
+</script>
+</body>
+</html>

@@ -24,8 +24,6 @@ dist/
 /misc
 /kc_backup
 /backup
-/web-test
-/mvp-test
 /keycloak
 /tasks
 # ================================
@@ -68,5 +66,9 @@ Thumbs.db
 tmp/
 debug/
 
-
+node_modules
 certs/
+
+generate_context.sh
+CONTEXT_personal.md
+/docs

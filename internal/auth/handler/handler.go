@@ -3,7 +3,6 @@ package handler
 import (
 	"crypto/rand"
 	"encoding/base64"
-	"log"
 	"net/http"
 	"time"
 
@@ -44,7 +43,10 @@ func (h *Handler) RegisterRoutes(r *gin.Engine) {
 	r.GET("/oauth/login", h.login)
 	r.GET("/oauth/callback", h.callback)
 	for _, route := range r.Routes() {
-		log.Printf("[ROUTE] %s %s", route.Method, route.Path)
+		logger.Info("route registered", map[string]any{
+			"method": route.Method,
+			"path":   route.Path,
+		})
 	}
 }
 
@@ -60,15 +62,9 @@ func (h *Handler) login(c *gin.Context) {
 }
 
 func (h *Handler) callback(c *gin.Context) {
-
-	log.Println("=== CALLBACK HIT ===")
-
 	p := h.providers.Get()
 
 	if !validateState(c) {
-		// c.JSON(http.StatusUnauthorized, gin.H{
-		// 	"error": "invalid state",
-		// })
 		clearAuthArtifacts(c)
 		h.redirectToKeycloakLogin(c)
 		return
@@ -77,24 +73,18 @@ func (h *Handler) callback(c *gin.Context) {
 	errParam := c.Query("error")
 	errDesc := c.Query("error_description")
 
-	// CASE 1: OAuth error (very common during registration)
 	if errParam != "" {
 		logger.Warn("oidc callback returned error", map[string]any{
 			"error": errParam,
 			"desc":  errDesc,
 		})
-		// 	c.Redirect(http.StatusFound, "/login")
-		// 	return
 		clearAuthArtifacts(c)
 		h.redirectToKeycloakLogin(c)
 		return
 	}
 
-	// CASE 2: Normal OAuth callback
 	code := c.Query("code")
 	if code == "" {
-		// logger.Error("oidc callback missing code and error", nil)
-		// c.AbortWithStatus(http.StatusBadRequest)
 		logger.Error("oidc callback missing code and error", nil)
 		clearAuthArtifacts(c)
 		h.redirectToKeycloakLogin(c)
@@ -103,9 +93,6 @@ func (h *Handler) callback(c *gin.Context) {
 
 	codeVerifier := getPKCEVerifier(c)
 	if codeVerifier == "" {
-		// c.JSON(http.StatusUnauthorized, gin.H{
-		// 	"error": "missing pkce verifier",
-		// })
 		clearAuthArtifacts(c)
 		h.redirectToKeycloakLogin(c)
 		return
@@ -117,9 +104,6 @@ func (h *Handler) callback(c *gin.Context) {
 		codeVerifier,
 	)
 	if err != nil {
-		// c.JSON(http.StatusUnauthorized, gin.H{
-		// 	"error": "authentication failed",
-		// })
 		clearAuthArtifacts(c)
 		h.redirectToKeycloakLogin(c)
 		return
@@ -127,15 +111,11 @@ func (h *Handler) callback(c *gin.Context) {
 
 	userID, err := h.resolver.Resolve(c.Request.Context(), identity)
 	if err != nil {
-		// c.JSON(http.StatusInternalServerError, gin.H{
-		// 	"error": "failed to resolve user",
-		// })
 		clearAuthArtifacts(c)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
 	}
 
-	// Block disabled users at login
 	status, err := h.resolver.GetUserStatus(c.Request.Context(), userID)
 	if err != nil {
 		clearAuthArtifacts(c)
@@ -144,19 +124,17 @@ func (h *Handler) callback(c *gin.Context) {
 	}
 
 	if status != "active" {
-		log.Printf(
-			"event=login_blocked_user_disabled user_id=%s status=%s ip=%s",
-			userID,
-			status,
-			c.ClientIP(),
-		)
+		logger.Warn("login blocked for disabled user", logger.WithRequestID(c, map[string]any{
+			"user_id": userID,
+			"status":  status,
+			"ip":      c.ClientIP(),
+		}))
 
 		clearAuthArtifacts(c)
 		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
-	// Fetch current session version
 	version, err := h.resolver.GetSessionVersion(c.Request.Context(), userID)
 	if err != nil {
 		clearAuthArtifacts(c)
@@ -166,9 +144,6 @@ func (h *Handler) callback(c *gin.Context) {
 
 	sessionID, err := session.GenerateID()
 	if err != nil {
-		// c.JSON(http.StatusInternalServerError, gin.H{
-		// 	"error": "failed to create session",
-		// })
 		clearAuthArtifacts(c)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
@@ -182,9 +157,6 @@ func (h *Handler) callback(c *gin.Context) {
 	}
 
 	now := time.Now()
-
-	// absoluteExpiry := now.Add(24 * time.Hour)
-	// absoluteExpiry := now.Add(500 * time.Second)
 	absoluteExpiry := now.Add(10 * time.Minute)
 	idleExpiry := now.Add(middleware.IdleTimeout)
 
@@ -199,9 +171,6 @@ func (h *Handler) callback(c *gin.Context) {
 	}
 
 	if err := h.sessionStore.Create(c.Request.Context(), sess); err != nil {
-		// c.JSON(http.StatusInternalServerError, gin.H{
-		// 	"error": "failed to persist session",
-		// })
 		clearAuthArtifacts(c)
 		c.AbortWithStatus(http.StatusInternalServerError)
 		return
@@ -223,44 +192,34 @@ func (h *Handler) callback(c *gin.Context) {
 		Expires:  absoluteExpiry,
 	})
 
-	log.Printf("[LOGIN_SUCCESS] user_id=%s sid=%s ip=%s",
-		userID,
-		sessionID,
-		c.ClientIP(),
-	)
+	logger.Info("login success", logger.WithRequestID(c, map[string]any{
+		"user_id":    userID,
+		"session_id": sessionID,
+		"ip":         c.ClientIP(),
+	}))
 
-	// c.JSON(http.StatusOK, gin.H{
-	// 	"status": "authenticated",
-	// })
 	clearAuthArtifacts(c)
 	c.Header("Cache-Control", "no-store")
 	c.Header("Pragma", "no-cache")
 	c.Header("X-Content-Type-Options", "nosniff")
 	c.Redirect(http.StatusFound, "/dashboard")
-
-	// W E B - T E S T
-	// c.Redirect(http.StatusFound, "/dashboard.html")
-
 }
 
 func (h *Handler) Logout(c *gin.Context) {
+	logger.Info("logout request", logger.WithRequestID(c, map[string]any{
+		"method": c.Request.Method,
+		"path":   c.Request.URL.Path,
+	}))
 
-	log.Printf("[REQ] %s %s", c.Request.Method, c.Request.URL.Path)
-
-	// 1. Read session cookie (same pattern as auth middleware)
 	cookie, err := c.Request.Cookie(session.CookieName)
 	if err == nil && cookie.Value != "" {
-		// 2. Delete session from store (best-effort)
 		_ = h.sessionStore.Delete(c.Request.Context(), cookie.Value)
-		// D E B U G - L O G O U T
-		log.Printf(
-			"[LOGOUT] session_id=%s ip=%s",
-			cookie.Value,
-			c.ClientIP(),
-		)
+		logger.Info("logout success", logger.WithRequestID(c, map[string]any{
+			"session_id": cookie.Value,
+			"ip":         c.ClientIP(),
+		}))
 	}
 
-	// 3. Clear cookie (must pass options)
 	session.ClearCookie(c.Writer, session.CookieOptions{
 		Path:     "/",
 		Secure:   true,
@@ -278,15 +237,15 @@ func (h *Handler) Logout(c *gin.Context) {
 		SameSite: http.SameSiteLaxMode,
 	})
 
-	// 4. Idempotent response
 	c.Status(http.StatusNoContent)
 }
 
 func (h *Handler) LogoutAll(c *gin.Context) {
+	logger.Info("logout-all request", logger.WithRequestID(c, map[string]any{
+		"method": c.Request.Method,
+		"path":   c.Request.URL.Path,
+	}))
 
-	log.Printf("[REQ] %s %s", c.Request.Method, c.Request.URL.Path)
-
-	// Read current session to determine user
 	cookie, err := c.Request.Cookie(session.CookieName)
 	if err != nil || cookie.Value == "" {
 		c.Status(http.StatusNoContent)
@@ -295,7 +254,6 @@ func (h *Handler) LogoutAll(c *gin.Context) {
 
 	ctx := c.Request.Context()
 
-	// Load current session to get userID
 	sess, err := h.sessionStore.Get(ctx, cookie.Value)
 	if err != nil || sess == nil {
 		c.Status(http.StatusNoContent)
@@ -304,7 +262,6 @@ func (h *Handler) LogoutAll(c *gin.Context) {
 
 	userID := sess.UserID
 
-	// Type assert to RedisStore
 	redisStore, ok := h.sessionStore.(*session.RedisStore)
 	if !ok {
 		c.Status(http.StatusInternalServerError)
@@ -313,7 +270,6 @@ func (h *Handler) LogoutAll(c *gin.Context) {
 
 	userKey := "user_sessions:" + userID
 
-	// Get all session IDs
 	sids, err := redisStore.Client().SMembers(ctx, userKey).Result()
 	if err != nil {
 		c.Status(http.StatusInternalServerError)
@@ -330,13 +286,12 @@ func (h *Handler) LogoutAll(c *gin.Context) {
 
 	_, _ = pipe.Exec(ctx)
 
-	log.Printf("[LOGOUT_ALL] user_id=%s sessions=%d ip=%s",
-		userID,
-		len(sids),
-		c.ClientIP(),
-	)
+	logger.Info("logout-all success", logger.WithRequestID(c, map[string]any{
+		"user_id":  userID,
+		"sessions": len(sids),
+		"ip":       c.ClientIP(),
+	}))
 
-	// Clear current cookie
 	session.ClearCookie(c.Writer, session.CookieOptions{
 		Path:     "/",
 		Secure:   true,
